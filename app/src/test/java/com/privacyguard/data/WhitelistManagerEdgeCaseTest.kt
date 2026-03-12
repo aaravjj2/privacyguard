@@ -2225,4 +2225,468 @@ class WhitelistManagerEdgeCaseTest {
         assertTrue(all.isEmpty())
         assertEquals(0, all.size)
     }
+
+    // ========================================================================
+    // Section 28: Boundary tests with exact default app operations
+    // ========================================================================
+
+    @Test
+    fun `add 1Password explicitly after pre-populate does not duplicate`() {
+        val before = manager.getWhitelistCount()
+        manager.addToWhitelist("com.agilebits.onepassword")
+        assertEquals(before, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `remove Bitwarden then verify only Bitwarden is gone`() {
+        manager.removeFromWhitelist("com.bitwarden.mobile")
+        assertFalse(manager.isWhitelisted("com.bitwarden.mobile"))
+        assertTrue(manager.isWhitelisted("com.agilebits.onepassword"))
+        assertTrue(manager.isWhitelisted("org.keepassdroid"))
+        assertTrue(manager.isWhitelisted("com.lastpass.lpandroid"))
+        assertTrue(manager.isWhitelisted("com.x8bit.bitwarden"))
+        assertTrue(manager.isWhitelisted("keepass2android.keepass2android"))
+    }
+
+    @Test
+    fun `remove KeePassDroid then verify only KeePassDroid is gone`() {
+        manager.removeFromWhitelist("org.keepassdroid")
+        assertFalse(manager.isWhitelisted("org.keepassdroid"))
+        assertTrue(manager.isWhitelisted("com.agilebits.onepassword"))
+        assertTrue(manager.isWhitelisted("com.bitwarden.mobile"))
+        assertTrue(manager.isWhitelisted("com.lastpass.lpandroid"))
+        assertTrue(manager.isWhitelisted("com.x8bit.bitwarden"))
+        assertTrue(manager.isWhitelisted("keepass2android.keepass2android"))
+    }
+
+    @Test
+    fun `remove LastPass then verify only LastPass is gone`() {
+        manager.removeFromWhitelist("com.lastpass.lpandroid")
+        assertFalse(manager.isWhitelisted("com.lastpass.lpandroid"))
+        assertTrue(manager.isWhitelisted("com.agilebits.onepassword"))
+        assertTrue(manager.isWhitelisted("com.bitwarden.mobile"))
+        assertTrue(manager.isWhitelisted("org.keepassdroid"))
+    }
+
+    @Test
+    fun `remove Bitwarden alt then verify only alt is gone`() {
+        manager.removeFromWhitelist("com.x8bit.bitwarden")
+        assertFalse(manager.isWhitelisted("com.x8bit.bitwarden"))
+        assertTrue(manager.isWhitelisted("com.bitwarden.mobile"))
+    }
+
+    @Test
+    fun `remove Keepass2Android then verify only K2A is gone`() {
+        manager.removeFromWhitelist("keepass2android.keepass2android")
+        assertFalse(manager.isWhitelisted("keepass2android.keepass2android"))
+        assertEquals(WhitelistManager.DEFAULT_TRUSTED_APPS.size - 1, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `remove each default app individually and verify count decreases`() {
+        val defaults = WhitelistManager.DEFAULT_TRUSTED_APPS.toList()
+        for (i in defaults.indices) {
+            val countBefore = manager.getWhitelistCount()
+            manager.removeFromWhitelist(defaults[i])
+            assertEquals(countBefore - 1, manager.getWhitelistCount())
+        }
+        assertEquals(0, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `toggle each default app off and verify all are removed`() {
+        val defaults = WhitelistManager.DEFAULT_TRUSTED_APPS.toList()
+        for (app in defaults) {
+            val result = manager.toggleWhitelist(app)
+            assertFalse(result)
+        }
+        assertEquals(0, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `toggle each default app off then on and verify all are restored`() {
+        val defaults = WhitelistManager.DEFAULT_TRUSTED_APPS.toList()
+        for (app in defaults) {
+            manager.toggleWhitelist(app)
+        }
+        assertEquals(0, manager.getWhitelistCount())
+        for (app in defaults) {
+            manager.toggleWhitelist(app)
+        }
+        assertEquals(defaults.size, manager.getWhitelistCount())
+    }
+
+    // ========================================================================
+    // Section 29: Large-scale reconstruction and persistence
+    // ========================================================================
+
+    @Test
+    fun `add 200 custom apps then reconstruct and verify all present`() {
+        manager.clearAll()
+        val apps = (1..200).map { "com.persist.app$it" }
+        apps.forEach { manager.addToWhitelist(it) }
+        val manager2 = WhitelistManager(prefs)
+        assertEquals(200, manager2.getWhitelistCount())
+        apps.forEach { assertTrue(manager2.isWhitelisted(it)) }
+    }
+
+    @Test
+    fun `add apps with very similar names and verify distinctness after reconstruction`() {
+        manager.clearAll()
+        val apps = listOf(
+            "com.app", "com.app1", "com.app12", "com.app123",
+            "com.app1234", "com.app12345", "com.app.a", "com.app.b",
+            "com.app.c", "com.app.d"
+        )
+        apps.forEach { manager.addToWhitelist(it) }
+        val manager2 = WhitelistManager(prefs)
+        assertEquals(apps.size, manager2.getWhitelistCount())
+        apps.forEach { assertTrue(manager2.isWhitelisted(it)) }
+    }
+
+    @Test
+    fun `reconstruction preserves toggle state`() {
+        manager.clearAll()
+        manager.addToWhitelist("com.toggle.persist")
+        manager.toggleWhitelist("com.toggle.persist") // removes it
+        val manager2 = WhitelistManager(prefs)
+        assertFalse(manager2.isWhitelisted("com.toggle.persist"))
+    }
+
+    @Test
+    fun `multiple reconstructions in sequence`() {
+        manager.addToWhitelist("com.multi.recon")
+        val m2 = WhitelistManager(prefs)
+        assertTrue(m2.isWhitelisted("com.multi.recon"))
+        m2.addToWhitelist("com.multi.recon2")
+        val m3 = WhitelistManager(prefs)
+        assertTrue(m3.isWhitelisted("com.multi.recon"))
+        assertTrue(m3.isWhitelisted("com.multi.recon2"))
+    }
+
+    // ========================================================================
+    // Section 30: Whitespace and encoding edge cases
+    // ========================================================================
+
+    @Test
+    fun `package name with mixed whitespace types`() {
+        val name = "com.app \t\n\r end"
+        manager.addToWhitelist(name)
+        assertTrue(manager.isWhitelisted(name))
+        assertFalse(manager.isWhitelisted("com.app end"))
+    }
+
+    @Test
+    fun `package name with leading and trailing whitespace are different`() {
+        manager.addToWhitelist("  com.space.app  ")
+        manager.addToWhitelist("com.space.app")
+        assertTrue(manager.isWhitelisted("  com.space.app  "))
+        assertTrue(manager.isWhitelisted("com.space.app"))
+        // They are different entries
+        val countBefore = manager.getWhitelistCount()
+        manager.removeFromWhitelist("com.space.app")
+        assertEquals(countBefore - 1, manager.getWhitelistCount())
+        assertTrue(manager.isWhitelisted("  com.space.app  "))
+    }
+
+    @Test
+    fun `package name with various Unicode whitespace characters`() {
+        // Non-breaking space U+00A0
+        manager.addToWhitelist("com.app\u00A0nbsp")
+        assertTrue(manager.isWhitelisted("com.app\u00A0nbsp"))
+        assertFalse(manager.isWhitelisted("com.app nbsp"))
+    }
+
+    @Test
+    fun `package name with em space`() {
+        manager.addToWhitelist("com.app\u2003emspace")
+        assertTrue(manager.isWhitelisted("com.app\u2003emspace"))
+    }
+
+    @Test
+    fun `package name with en space`() {
+        manager.addToWhitelist("com.app\u2002enspace")
+        assertTrue(manager.isWhitelisted("com.app\u2002enspace"))
+    }
+
+    // ========================================================================
+    // Section 31: Additional flow emission verification
+    // ========================================================================
+
+    @Test
+    fun `flow emission after adding 10 apps sequentially`() = runBlocking {
+        manager.clearAll()
+        (1..10).forEach { manager.addToWhitelist("com.flow.seq$it") }
+        val current = manager.getWhitelistedAppsFlow().first()
+        assertEquals(10, current.size)
+        (1..10).forEach { assertTrue(current.contains("com.flow.seq$it")) }
+    }
+
+    @Test
+    fun `flow emission after removing half of added apps`() = runBlocking {
+        manager.clearAll()
+        (1..10).forEach { manager.addToWhitelist("com.flow.half$it") }
+        (1..5).forEach { manager.removeFromWhitelist("com.flow.half$it") }
+        val current = manager.getWhitelistedAppsFlow().first()
+        assertEquals(5, current.size)
+        (1..5).forEach { assertFalse(current.contains("com.flow.half$it")) }
+        (6..10).forEach { assertTrue(current.contains("com.flow.half$it")) }
+    }
+
+    @Test
+    fun `flow emission after toggle sequence`() = runBlocking {
+        manager.clearAll()
+        manager.toggleWhitelist("com.flow.t1") // add
+        manager.toggleWhitelist("com.flow.t2") // add
+        manager.toggleWhitelist("com.flow.t1") // remove
+        val current = manager.getWhitelistedAppsFlow().first()
+        assertEquals(1, current.size)
+        assertTrue(current.contains("com.flow.t2"))
+    }
+
+    @Test
+    fun `flow emission consistency with count after complex operations`() = runBlocking {
+        manager.clearAll()
+        manager.prePopulateDefaults()
+        manager.addToWhitelist("com.flow.complex1")
+        manager.addToWhitelist("com.flow.complex2")
+        manager.removeFromWhitelist("com.agilebits.onepassword")
+        manager.toggleWhitelist("com.flow.complex3")
+        val current = manager.getWhitelistedAppsFlow().first()
+        assertEquals(manager.getWhitelistCount(), current.size)
+        assertEquals(manager.getAllWhitelistedApps(), current)
+    }
+
+    // ========================================================================
+    // Section 32: Edge case - operations returning correct types
+    // ========================================================================
+
+    @Test
+    fun `getAllWhitelistedApps returns Set type`() {
+        val result = manager.getAllWhitelistedApps()
+        assertTrue(result is Set<String>)
+    }
+
+    @Test
+    fun `getWhitelistCount returns Int type`() {
+        val result = manager.getWhitelistCount()
+        assertTrue(result is Int)
+    }
+
+    @Test
+    fun `isWhitelisted returns Boolean type`() {
+        val result = manager.isWhitelisted("com.test.type")
+        assertTrue(result is Boolean)
+    }
+
+    @Test
+    fun `toggleWhitelist returns Boolean type`() {
+        val result = manager.toggleWhitelist("com.test.toggle.type")
+        assertTrue(result is Boolean)
+    }
+
+    // ========================================================================
+    // Section 33: Batch operations and consistency
+    // ========================================================================
+
+    @Test
+    fun `add 50 apps verify each via isWhitelisted and getAllWhitelistedApps`() {
+        manager.clearAll()
+        val apps = (1..50).map { "com.batch.verify$it" }
+        apps.forEach { manager.addToWhitelist(it) }
+        val all = manager.getAllWhitelistedApps()
+        apps.forEach {
+            assertTrue("isWhitelisted should be true for $it", manager.isWhitelisted(it))
+            assertTrue("getAllWhitelistedApps should contain $it", all.contains(it))
+        }
+    }
+
+    @Test
+    fun `remove 25 of 50 apps and verify remaining`() {
+        manager.clearAll()
+        val apps = (1..50).map { "com.batch.remove$it" }
+        apps.forEach { manager.addToWhitelist(it) }
+        val toRemove = apps.take(25)
+        val toKeep = apps.drop(25)
+        toRemove.forEach { manager.removeFromWhitelist(it) }
+        toRemove.forEach { assertFalse(manager.isWhitelisted(it)) }
+        toKeep.forEach { assertTrue(manager.isWhitelisted(it)) }
+        assertEquals(25, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `toggle 50 new apps all become whitelisted`() {
+        manager.clearAll()
+        val apps = (1..50).map { "com.batch.toggle$it" }
+        apps.forEach {
+            val result = manager.toggleWhitelist(it)
+            assertTrue(result)
+        }
+        assertEquals(50, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `toggle 50 whitelisted apps all become not whitelisted`() {
+        manager.clearAll()
+        val apps = (1..50).map { "com.batch.untoggle$it" }
+        apps.forEach { manager.addToWhitelist(it) }
+        apps.forEach {
+            val result = manager.toggleWhitelist(it)
+            assertFalse(result)
+        }
+        assertEquals(0, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `interleave add and toggle on disjoint sets`() {
+        manager.clearAll()
+        val addApps = (1..20).map { "com.add.set$it" }
+        val toggleApps = (1..20).map { "com.toggle.set$it" }
+        addApps.forEach { manager.addToWhitelist(it) }
+        toggleApps.forEach { manager.toggleWhitelist(it) }
+        assertEquals(40, manager.getWhitelistCount())
+        addApps.forEach { assertTrue(manager.isWhitelisted(it)) }
+        toggleApps.forEach { assertTrue(manager.isWhitelisted(it)) }
+    }
+
+    @Test
+    fun `clear then add then toggle same app`() {
+        manager.clearAll()
+        manager.addToWhitelist("com.complex.op")
+        assertTrue(manager.isWhitelisted("com.complex.op"))
+        manager.toggleWhitelist("com.complex.op")
+        assertFalse(manager.isWhitelisted("com.complex.op"))
+        assertEquals(0, manager.getWhitelistCount())
+    }
+
+    // ========================================================================
+    // Section 34: Verification of prefs interaction details
+    // ========================================================================
+
+    @Test
+    fun `addToWhitelist calls edit on prefs`() {
+        manager.addToWhitelist("com.prefs.edit.test")
+        verify(prefs, atLeast(1)).edit()
+    }
+
+    @Test
+    fun `removeFromWhitelist calls edit on prefs`() {
+        manager.addToWhitelist("com.prefs.remove.test")
+        manager.removeFromWhitelist("com.prefs.remove.test")
+        verify(prefs, atLeast(1)).edit()
+    }
+
+    @Test
+    fun `clearAll calls edit on prefs`() {
+        manager.clearAll()
+        verify(prefs, atLeast(1)).edit()
+    }
+
+    @Test
+    fun `toggleWhitelist calls edit on prefs`() {
+        manager.toggleWhitelist("com.prefs.toggle.test")
+        verify(prefs, atLeast(1)).edit()
+    }
+
+    @Test
+    fun `prePopulateDefaults calls edit on prefs`() {
+        manager.clearAll()
+        manager.prePopulateDefaults()
+        verify(prefs, atLeast(1)).edit()
+    }
+
+    // ========================================================================
+    // Section 35: Final comprehensive scenario tests
+    // ========================================================================
+
+    @Test
+    fun `full lifecycle scenario`() = runBlocking {
+        // Step 1: Fresh start with defaults
+        assertEquals(6, manager.getWhitelistCount())
+
+        // Step 2: Add custom apps
+        manager.addToWhitelist("com.lifecycle.app1")
+        manager.addToWhitelist("com.lifecycle.app2")
+        manager.addToWhitelist("com.lifecycle.app3")
+        assertEquals(9, manager.getWhitelistCount())
+
+        // Step 3: Remove some defaults
+        manager.removeFromWhitelist("com.agilebits.onepassword")
+        manager.removeFromWhitelist("com.bitwarden.mobile")
+        assertEquals(7, manager.getWhitelistCount())
+
+        // Step 4: Toggle operations
+        manager.toggleWhitelist("com.lifecycle.app1") // remove
+        manager.toggleWhitelist("com.lifecycle.app4") // add
+        assertEquals(7, manager.getWhitelistCount())
+
+        // Step 5: Verify flow consistency
+        val flowSet = manager.getWhitelistedAppsFlow().first()
+        assertEquals(manager.getWhitelistCount(), flowSet.size)
+        assertEquals(manager.getAllWhitelistedApps(), flowSet)
+
+        // Step 6: Reconstruct and verify
+        val manager2 = WhitelistManager(prefs)
+        assertEquals(manager.getWhitelistCount(), manager2.getWhitelistCount())
+        assertEquals(manager.getAllWhitelistedApps(), manager2.getAllWhitelistedApps())
+
+        // Step 7: Clear and restore
+        manager.clearAll()
+        assertEquals(0, manager.getWhitelistCount())
+        manager.prePopulateDefaults()
+        assertEquals(6, manager.getWhitelistCount())
+    }
+
+    @Test
+    fun `stress test - mixed operations 500 times`() {
+        manager.clearAll()
+        repeat(500) { i ->
+            when (i % 5) {
+                0 -> manager.addToWhitelist("com.stress.mixed$i")
+                1 -> manager.toggleWhitelist("com.stress.mixed${i - 1}")
+                2 -> manager.addToWhitelist("com.stress.keep$i")
+                3 -> manager.removeFromWhitelist("com.stress.mixed${i - 2}")
+                4 -> manager.toggleWhitelist("com.stress.keep${i - 2}")
+            }
+        }
+        // Just verify consistency
+        val count = manager.getWhitelistCount()
+        val all = manager.getAllWhitelistedApps()
+        assertEquals(count, all.size)
+        for (app in all) {
+            assertTrue(manager.isWhitelisted(app))
+        }
+    }
+
+    @Test
+    fun `getWhitelistCount never returns negative after any operation sequence`() {
+        manager.clearAll()
+        manager.removeFromWhitelist("com.not.there1")
+        manager.removeFromWhitelist("com.not.there2")
+        assertTrue(manager.getWhitelistCount() >= 0)
+        manager.addToWhitelist("com.one")
+        manager.removeFromWhitelist("com.one")
+        manager.removeFromWhitelist("com.one")
+        assertTrue(manager.getWhitelistCount() >= 0)
+    }
+
+    @Test
+    fun `whitelist is empty set not null after clearAll`() {
+        manager.clearAll()
+        val all = manager.getAllWhitelistedApps()
+        assertNotNull(all)
+        assertEquals(emptySet<String>(), all)
+    }
+
+    @Test
+    fun `suggested app names is a companion property and always available`() {
+        assertNotNull(WhitelistManager.SUGGESTED_APP_NAMES)
+        assertTrue(WhitelistManager.SUGGESTED_APP_NAMES.isNotEmpty())
+    }
+
+    @Test
+    fun `default trusted apps is a companion property and always available`() {
+        assertNotNull(WhitelistManager.DEFAULT_TRUSTED_APPS)
+        assertTrue(WhitelistManager.DEFAULT_TRUSTED_APPS.isNotEmpty())
+    }
 }

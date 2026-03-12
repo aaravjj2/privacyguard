@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PrivacyGuard</string>
+    <string name="accessibility_service_description">PrivacyGuard monitors text field changes across apps to detect sensitive personal information (PII) such as credit card numbers, SSNs, and passwords before they are accidentally shared. All analysis happens entirely on-device — no data is ever transmitted.</string>
+    <string name="notification_channel_name">PrivacyGuard Monitoring</string>
+    <string name="notification_channel_description">Persistent notification showing PrivacyGuard is actively protecting your clipboard</string>
+    <string name="notification_title">PrivacyGuard Active</string>
+    <string name="notification_text">Monitoring clipboard for sensitive data</string>
+    <string name="alert_critical_title">Sensitive Data Detected!</string>
+    <string name="alert_high_title">Potential PII Found</string>
+    <string name="alert_medium_title">Data Notice</string>
+    <string name="action_clear_clipboard">Clear Clipboard</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_whitelist">Add to Whitelist</string>
+    <string name="onboarding_title_1">Your Clipboard Is Exposed</string>
+    <string name="onboarding_desc_1">Every time you copy sensitive data — credit cards, passwords, SSNs — it sits unprotected in your clipboard, accessible by any app.</string>
+    <string name="onboarding_title_2">How PrivacyGuard Protects You</string>
+    <string name="onboarding_desc_2">PrivacyGuard uses on-device AI to detect PII in real-time. All analysis happens locally — your data never leaves your phone.</string>
+    <string name="onboarding_title_3">Grant Permissions</string>
+    <string name="onboarding_desc_3">PrivacyGuard needs a few permissions to protect you. We\'ll explain each one before asking.</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="history_title">Detection History</string>
+    <string name="whitelist_title">Trusted Apps</string>
+    <string name="settings_title">Settings</string>
+</resources>

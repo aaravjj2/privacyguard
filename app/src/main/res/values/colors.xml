@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Brand Colors -->
+    <color name="trust_blue">#FF1A56DB</color>
+    <color name="trust_blue_dark">#FF1444B0</color>
+    <color name="trust_blue_light">#FF4A7AE8</color>
+
+    <!-- Alert Colors -->
+    <color name="alert_red">#FFE11D48</color>
+    <color name="alert_red_dark">#FFC41838</color>
+    <color name="alert_orange">#FFF97316</color>
+    <color name="alert_yellow">#FFEAB308</color>
+
+    <!-- Severity Colors -->
+    <color name="severity_critical">#FFE11D48</color>
+    <color name="severity_high">#FFF97316</color>
+    <color name="severity_medium">#FFEAB308</color>
+
+    <!-- Neutral Colors -->
+    <color name="background_light">#FFF8FAFC</color>
+    <color name="background_dark">#FF0F172A</color>
+    <color name="surface_light">#FFFFFFFF</color>
+    <color name="surface_dark">#FF1E293B</color>
+    <color name="on_surface_light">#FF0F172A</color>
+    <color name="on_surface_dark">#FFF1F5F9</color>
+
+    <!-- Status Colors -->
+    <color name="success_green">#FF10B981</color>
+    <color name="protection_active">#FF10B981</color>
+    <color name="protection_inactive">#FF94A3B8</color>
+
+    <!-- Legacy required colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

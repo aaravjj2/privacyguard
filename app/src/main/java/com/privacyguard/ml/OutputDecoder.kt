@@ -13,19 +13,31 @@ class OutputDecoder {
 
     companion object {
         // NER label map: O (non-entity) = 0, then B-/I- pairs for each entity type
-        // 0: O (outside any entity)
-        // 1: B-CREDIT_CARD, 2: I-CREDIT_CARD
-        // 3: B-SSN, 4: I-SSN
-        // 5: B-PASSWORD, 6: I-PASSWORD
-        // 7: B-API_KEY, 8: I-API_KEY
-        // 9: B-EMAIL, 10: I-EMAIL
-        // 11: B-PHONE, 12: I-PHONE
-        // 13: B-PERSON_NAME, 14: I-PERSON_NAME
-        // 15: B-ADDRESS, 16: I-ADDRESS
-        // 17: B-DATE_OF_BIRTH, 18: I-DATE_OF_BIRTH
-        // 19: B-MEDICAL_ID, 20: I-MEDICAL_ID
         const val NUM_LABELS = 21
+        const val LABEL_O = 0
         const val O_LABEL = 0
+
+        // B- labels (begin entity)
+        const val LABEL_B_CREDIT_CARD = 1
+        const val LABEL_I_CREDIT_CARD = 2
+        const val LABEL_B_SSN = 3
+        const val LABEL_I_SSN = 4
+        const val LABEL_B_PASSWORD = 5
+        const val LABEL_I_PASSWORD = 6
+        const val LABEL_B_API_KEY = 7
+        const val LABEL_I_API_KEY = 8
+        const val LABEL_B_EMAIL = 9
+        const val LABEL_I_EMAIL = 10
+        const val LABEL_B_PHONE = 11
+        const val LABEL_I_PHONE = 12
+        const val LABEL_B_NAME = 13
+        const val LABEL_I_NAME = 14
+        const val LABEL_B_ADDRESS = 15
+        const val LABEL_I_ADDRESS = 16
+        const val LABEL_B_DOB = 17
+        const val LABEL_I_DOB = 18
+        const val LABEL_B_MEDICAL = 19
+        const val LABEL_I_MEDICAL = 20
 
         private val labelToEntityType = mapOf(
             1 to EntityType.CREDIT_CARD, 2 to EntityType.CREDIT_CARD,
@@ -176,7 +188,11 @@ class OutputDecoder {
         return (tokenIndex * 4).coerceIn(0, text.length)
     }
 
-    private fun softmax(logits: FloatArray): FloatArray {
+    fun labelToEntityType(label: Int): EntityType? = getEntityTypeForLabel(label)
+
+    fun argmax(values: FloatArray): Int = values.indices.maxByOrNull { values[it] } ?: 0
+
+    fun softmax(logits: FloatArray): FloatArray {
         val max = logits.max()
         val exps = FloatArray(logits.size) { exp((logits[it] - max).toDouble()).toFloat() }
         val sum = exps.sum()

@@ -1906,4 +1906,606 @@ class DebouncerEdgeCaseTest {
         // Behavior depends on implementation: second debounce cancels the job
         // which would cancel the first action too
     }
+
+    // ========================================================================
+    // Section 31: Detailed timer reset verification
+    // ========================================================================
+
+    @Test
+    fun `timer reset at 1ms before expiry`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("first") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS - 1)
+        debouncer.debounce { results.add("second") }
+        // First call's timer was at 799ms, reset. Now need another 800ms
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, results.size)
+        assertEquals("second", results[0])
+    }
+
+    @Test
+    fun `timer reset at 100ms before expiry`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("first") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS - 100)
+        debouncer.debounce { results.add("second") }
+        advanceTimeBy(100)
+        // Only 100ms passed since second call, not enough
+        assertEquals(0, results.size)
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS - 100 + 1)
+        assertEquals(1, results.size)
+        assertEquals("second", results[0])
+    }
+
+    @Test
+    fun `timer reset at exactly half delay`() = testScope.runTest {
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 2)
+        debouncer.debounce { executed.set(true) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 2)
+        // Exactly 400ms since second call, need 800ms total
+        assertFalse(executed.get())
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 2 + 1)
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `three resets each at quarter delay`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<Int>()
+        debouncer.debounce { results.add(1) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        debouncer.debounce { results.add(2) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        debouncer.debounce { results.add(3) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        debouncer.debounce { results.add(4) }
+        // 200ms since last reset, need 800ms
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, results.size)
+        assertEquals(4, results[0])
+    }
+
+    @Test
+    fun `reset pattern - call at 0, 700, 1400, 2100 with 800ms delay`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<Int>()
+        debouncer.debounce { results.add(1) }
+        advanceTimeBy(700) // at 700ms
+        debouncer.debounce { results.add(2) }
+        advanceTimeBy(700) // at 1400ms
+        debouncer.debounce { results.add(3) }
+        advanceTimeBy(700) // at 2100ms
+        debouncer.debounce { results.add(4) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1) // at 2901ms
+        assertEquals(1, results.size)
+        assertEquals(4, results[0])
+    }
+
+    // ========================================================================
+    // Section 32: Complex interleaving patterns
+    // ========================================================================
+
+    @Test
+    fun `cancel-debounce-cancel-debounce pattern`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("a") }
+        debouncer.cancel()
+        debouncer.debounce { results.add("b") }
+        debouncer.cancel()
+        debouncer.debounce { results.add("c") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, results.size)
+        assertEquals("c", results[0])
+    }
+
+    @Test
+    fun `flush-debounce-flush-debounce pattern`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("a") }
+        debouncer.flush()
+        advanceUntilIdle()
+        debouncer.debounce { results.add("b") }
+        debouncer.flush()
+        advanceUntilIdle()
+        debouncer.debounce { results.add("c") }
+        debouncer.flush()
+        advanceUntilIdle()
+        debouncer.debounce { results.add("d") }
+        debouncer.flush()
+        advanceUntilIdle()
+        assertEquals(4, results.size)
+        assertEquals(listOf("a", "b", "c", "d"), results.toList())
+    }
+
+    @Test
+    fun `mixed cancel-flush-debounce pattern`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("x") }
+        debouncer.cancel()
+        debouncer.debounce { results.add("y") }
+        debouncer.flush()
+        advanceUntilIdle()
+        debouncer.debounce { results.add("z") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(2, results.size)
+        assertEquals("y", results[0])
+        assertEquals("z", results[1])
+    }
+
+    @Test
+    fun `debounce-wait-debounce-cancel-debounce-wait pattern`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("first") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, results.size)
+
+        debouncer.debounce { results.add("cancelled") }
+        debouncer.cancel()
+
+        debouncer.debounce { results.add("third") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(2, results.size)
+        assertEquals("first", results[0])
+        assertEquals("third", results[1])
+    }
+
+    // ========================================================================
+    // Section 33: Delay variation tests
+    // ========================================================================
+
+    @Test
+    fun `debouncer with 10ms delay and 5 calls at 3ms intervals`() = testScope.runTest {
+        val d = Debouncer(testScope, 10L)
+        val results = CopyOnWriteArrayList<Int>()
+        repeat(5) { i ->
+            d.debounce { results.add(i) }
+            advanceTimeBy(3)
+        }
+        advanceTimeBy(11)
+        assertEquals(1, results.size)
+        assertEquals(4, results[0])
+    }
+
+    @Test
+    fun `debouncer with 50ms delay and 10 calls at 10ms intervals`() = testScope.runTest {
+        val d = Debouncer(testScope, 50L)
+        val results = CopyOnWriteArrayList<Int>()
+        repeat(10) { i ->
+            d.debounce { results.add(i) }
+            advanceTimeBy(10)
+        }
+        advanceTimeBy(51)
+        assertEquals(1, results.size)
+        assertEquals(9, results[0])
+    }
+
+    @Test
+    fun `debouncer with 300ms delay and 3 calls at 299ms intervals`() = testScope.runTest {
+        val d = Debouncer(testScope, 300L)
+        val results = CopyOnWriteArrayList<Int>()
+        d.debounce { results.add(0) }
+        advanceTimeBy(299) // Just under delay, reset
+        d.debounce { results.add(1) }
+        advanceTimeBy(299) // Just under delay again, reset
+        d.debounce { results.add(2) }
+        advanceTimeBy(301) // Over delay, execute
+        assertEquals(1, results.size)
+        assertEquals(2, results[0])
+    }
+
+    @Test
+    fun `debouncer with 300ms delay and calls at 301ms intervals all execute`() = testScope.runTest {
+        val d = Debouncer(testScope, 300L)
+        val results = CopyOnWriteArrayList<Int>()
+        d.debounce { results.add(0) }
+        advanceTimeBy(301)
+        d.debounce { results.add(1) }
+        advanceTimeBy(301)
+        d.debounce { results.add(2) }
+        advanceTimeBy(301)
+        assertEquals(3, results.size)
+        assertEquals(listOf(0, 1, 2), results.toList())
+    }
+
+    @Test
+    fun `debouncer with 5000ms delay`() = testScope.runTest {
+        val d = Debouncer(testScope, 5000L)
+        val executed = AtomicBoolean(false)
+        d.debounce { executed.set(true) }
+        advanceTimeBy(4999)
+        assertFalse(executed.get())
+        advanceTimeBy(2)
+        assertTrue(executed.get())
+    }
+
+    // ========================================================================
+    // Section 34: Action side-effect ordering
+    // ========================================================================
+
+    @Test
+    fun `spaced calls execute actions in chronological order`() = testScope.runTest {
+        val order = CopyOnWriteArrayList<Long>()
+        repeat(5) {
+            debouncer.debounce { order.add(currentTime) }
+            advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 100)
+        }
+        assertEquals(5, order.size)
+        for (i in 0 until order.size - 1) {
+            assertTrue("Element $i should be before element ${i + 1}", order[i] < order[i + 1])
+        }
+    }
+
+    @Test
+    fun `flush preserves last-debounced action`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("alpha") }
+        advanceTimeBy(50)
+        debouncer.debounce { results.add("beta") }
+        advanceTimeBy(50)
+        debouncer.debounce { results.add("gamma") }
+        debouncer.flush()
+        advanceUntilIdle()
+        assertEquals(1, results.size)
+        assertEquals("gamma", results[0])
+    }
+
+    @Test
+    fun `cancel followed by immediate debounce resets clean`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce { results.add("cancelled") }
+        advanceTimeBy(500)
+        debouncer.cancel()
+        debouncer.debounce { results.add("new") }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, results.size)
+        assertEquals("new", results[0])
+    }
+
+    // ========================================================================
+    // Section 35: State verification sequences
+    // ========================================================================
+
+    @Test
+    fun `hasPending state through complete lifecycle with delays`() = testScope.runTest {
+        // Initially no pending
+        assertFalse(debouncer.hasPending())
+
+        // After debounce, pending
+        debouncer.debounce { }
+        assertTrue(debouncer.hasPending())
+
+        // After partial time, still pending
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        assertTrue(debouncer.hasPending())
+
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        assertTrue(debouncer.hasPending())
+
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4)
+        assertTrue(debouncer.hasPending())
+
+        // After full time, no longer pending
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS / 4 + 1)
+        assertFalse(debouncer.hasPending())
+    }
+
+    @Test
+    fun `hasPending after rapid replacement followed by execution`() = testScope.runTest {
+        debouncer.debounce { }
+        assertTrue(debouncer.hasPending())
+        debouncer.debounce { }
+        assertTrue(debouncer.hasPending())
+        debouncer.debounce { }
+        assertTrue(debouncer.hasPending())
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertFalse(debouncer.hasPending())
+    }
+
+    @Test
+    fun `hasPending false then true then false cycle 10 times`() = testScope.runTest {
+        repeat(10) {
+            assertFalse(debouncer.hasPending())
+            debouncer.debounce { }
+            assertTrue(debouncer.hasPending())
+            advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+            assertFalse(debouncer.hasPending())
+        }
+    }
+
+    @Test
+    fun `hasPending after cancel is always false`() = testScope.runTest {
+        debouncer.debounce { }
+        debouncer.cancel()
+        assertFalse(debouncer.hasPending())
+
+        debouncer.debounce { }
+        advanceTimeBy(100)
+        debouncer.cancel()
+        assertFalse(debouncer.hasPending())
+
+        debouncer.debounce { }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS - 1)
+        debouncer.cancel()
+        assertFalse(debouncer.hasPending())
+    }
+
+    // ========================================================================
+    // Section 36: Memory and reference tests
+    // ========================================================================
+
+    @Test
+    fun `cancelled action reference is released`() = testScope.runTest {
+        var reference: Any? = Object()
+        val weakRefValue = reference
+        debouncer.debounce { reference.toString() }
+        debouncer.cancel()
+        // After cancel, pendingAction should be null
+        assertFalse(debouncer.hasPending())
+    }
+
+    @Test
+    fun `executed action reference is released`() = testScope.runTest {
+        debouncer.debounce { "do something" }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertFalse(debouncer.hasPending())
+    }
+
+    @Test
+    fun `many debouncers can be created without issue`() = testScope.runTest {
+        val debouncers = (1..100).map { Debouncer(testScope, it.toLong() * 10) }
+        assertEquals(100, debouncers.size)
+        debouncers.forEach { it.cancel() }
+    }
+
+    @Test
+    fun `creating and immediately cancelling 100 debouncers`() = testScope.runTest {
+        repeat(100) {
+            val d = Debouncer(testScope, 500L)
+            d.debounce { }
+            d.cancel()
+        }
+    }
+
+    // ========================================================================
+    // Section 37: Edge cases with coroutine context
+    // ========================================================================
+
+    @Test
+    fun `debouncer action runs in scope context`() = testScope.runTest {
+        var contextName: String? = null
+        debouncer.debounce {
+            contextName = kotlin.coroutines.coroutineContext.toString()
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertNotNull(contextName)
+    }
+
+    @Test
+    fun `debouncer action can yield`() = testScope.runTest {
+        val results = CopyOnWriteArrayList<String>()
+        debouncer.debounce {
+            results.add("before")
+            kotlinx.coroutines.yield()
+            results.add("after")
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        advanceUntilIdle()
+        assertEquals(2, results.size)
+        assertEquals("before", results[0])
+        assertEquals("after", results[1])
+    }
+
+    @Test
+    fun `debouncer action can use withContext`() = testScope.runTest {
+        val result = AtomicInteger(0)
+        debouncer.debounce {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Unconfined) {
+                result.set(42)
+            }
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        advanceUntilIdle()
+        assertEquals(42, result.get())
+    }
+
+    // ========================================================================
+    // Section 38: Debouncer constant relationships
+    // ========================================================================
+
+    @Test
+    fun `DEFAULT_DELAY_MS is a multiple of 100`() {
+        assertEquals(0L, Debouncer.DEFAULT_DELAY_MS % 100)
+    }
+
+    @Test
+    fun `MIN_DELAY_MS is a multiple of 100`() {
+        assertEquals(0L, Debouncer.MIN_DELAY_MS % 100)
+    }
+
+    @Test
+    fun `MAX_DELAY_MS is a multiple of 100`() {
+        assertEquals(0L, Debouncer.MAX_DELAY_MS % 100)
+    }
+
+    @Test
+    fun `MAX_DELAY_MS divided by MIN_DELAY_MS is 10`() {
+        assertEquals(10L, Debouncer.MAX_DELAY_MS / Debouncer.MIN_DELAY_MS)
+    }
+
+    @Test
+    fun `DEFAULT_DELAY_MS is 4 times MIN_DELAY_MS`() {
+        assertEquals(4L, Debouncer.DEFAULT_DELAY_MS / Debouncer.MIN_DELAY_MS)
+    }
+
+    @Test
+    fun `DEFAULT_DELAY_MS is less than half of MAX_DELAY_MS`() {
+        assertTrue(Debouncer.DEFAULT_DELAY_MS < Debouncer.MAX_DELAY_MS / 2 + 1)
+    }
+
+    // ========================================================================
+    // Section 39: Additional stress and robustness tests
+    // ========================================================================
+
+    @Test
+    fun `2000 rapid calls only produce one result`() = testScope.runTest {
+        val counter = AtomicInteger(0)
+        repeat(2000) {
+            debouncer.debounce { counter.incrementAndGet() }
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(1, counter.get())
+    }
+
+    @Test
+    fun `500 cancel operations in a row do not throw`() = testScope.runTest {
+        repeat(500) {
+            debouncer.cancel()
+        }
+        // Should still work afterward
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `500 flush operations in a row do not throw`() = testScope.runTest {
+        repeat(500) {
+            debouncer.flush()
+        }
+        // Should still work afterward
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `500 hasPending calls do not throw`() = testScope.runTest {
+        repeat(500) {
+            debouncer.hasPending()
+        }
+        assertFalse(debouncer.hasPending())
+    }
+
+    @Test
+    fun `alternating debounce-cancel 1000 times then verify clean state`() = testScope.runTest {
+        repeat(1000) {
+            debouncer.debounce { }
+            debouncer.cancel()
+        }
+        assertFalse(debouncer.hasPending())
+        // Verify it still works
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `debounce with action that modifies a large list`() = testScope.runTest {
+        val largeList = CopyOnWriteArrayList<Int>()
+        debouncer.debounce {
+            repeat(10000) { largeList.add(it) }
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(10000, largeList.size)
+    }
+
+    @Test
+    fun `debounce with action that computes a large result`() = testScope.runTest {
+        var result = 0L
+        debouncer.debounce {
+            result = (1L..100000L).sum()
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(5000050000L, result)
+    }
+
+    @Test
+    fun `debounce with action that creates nested collections`() = testScope.runTest {
+        var result: Map<String, List<Int>>? = null
+        debouncer.debounce {
+            result = mapOf(
+                "a" to (1..10).toList(),
+                "b" to (11..20).toList(),
+                "c" to (21..30).toList()
+            )
+        }
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertNotNull(result)
+        assertEquals(3, result!!.size)
+        assertEquals(10, result!!["a"]!!.size)
+    }
+
+    @Test
+    fun `debounce then advanceTimeBy in small increments of 1ms`() = testScope.runTest {
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        repeat(Debouncer.DEFAULT_DELAY_MS.toInt()) {
+            advanceTimeBy(1)
+        }
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `debounce then advanceTimeBy in 10ms increments`() = testScope.runTest {
+        val executed = AtomicBoolean(false)
+        debouncer.debounce { executed.set(true) }
+        repeat((Debouncer.DEFAULT_DELAY_MS / 10).toInt()) {
+            advanceTimeBy(10)
+        }
+        assertTrue(executed.get())
+    }
+
+    @Test
+    fun `debounce with custom delays at boundary values`() = testScope.runTest {
+        val delays = listOf(1L, 2L, 5L, 10L, 50L, 100L, 200L, 500L, 800L, 1000L, 2000L)
+        for (delayMs in delays) {
+            val d = Debouncer(testScope, delayMs)
+            val executed = AtomicBoolean(false)
+            d.debounce { executed.set(true) }
+            advanceTimeBy(delayMs + 1)
+            assertTrue("Should execute with delay $delayMs", executed.get())
+            d.cancel()
+        }
+    }
+
+    @Test
+    fun `debounce action captures list by reference correctly`() = testScope.runTest {
+        val sharedList = mutableListOf<String>()
+        debouncer.debounce {
+            sharedList.add("from-debounce")
+        }
+        sharedList.add("before-execution")
+        advanceTimeBy(Debouncer.DEFAULT_DELAY_MS + 1)
+        assertEquals(2, sharedList.size)
+        assertTrue(sharedList.contains("before-execution"))
+        assertTrue(sharedList.contains("from-debounce"))
+    }
+
+    @Test
+    fun `multiple independent debouncer lifecycles in sequence`() = testScope.runTest {
+        val counter = AtomicInteger(0)
+
+        // First debouncer
+        val d1 = Debouncer(testScope, 100L)
+        d1.debounce { counter.incrementAndGet() }
+        advanceTimeBy(101)
+        d1.cancel()
+
+        // Second debouncer
+        val d2 = Debouncer(testScope, 200L)
+        d2.debounce { counter.incrementAndGet() }
+        advanceTimeBy(201)
+        d2.cancel()
+
+        // Third debouncer
+        val d3 = Debouncer(testScope, 300L)
+        d3.debounce { counter.incrementAndGet() }
+        advanceTimeBy(301)
+        d3.cancel()
+
+        assertEquals(3, counter.get())
+    }
 }

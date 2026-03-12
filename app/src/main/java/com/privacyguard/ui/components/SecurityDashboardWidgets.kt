@@ -1887,3 +1887,400 @@ private fun StatisticsGridThreeColumnsPreview() {
         )
     }
 }
+
+// ==========================================================================
+// 10. AlertCountBanner
+// ==========================================================================
+
+/**
+ * A compact banner showing the current alert count with severity breakdown.
+ * Suitable for placement at the top of list screens.
+ *
+ * @param criticalCount Number of critical alerts.
+ * @param highCount Number of high severity alerts.
+ * @param mediumCount Number of medium severity alerts.
+ * @param onViewAlerts Callback when the user taps to view alerts.
+ * @param modifier Optional modifier.
+ */
+@Composable
+fun AlertCountBanner(
+    criticalCount: Int,
+    highCount: Int,
+    mediumCount: Int,
+    onViewAlerts: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val totalCount = criticalCount + highCount + mediumCount
+
+    val bannerColor by animateColorAsState(
+        targetValue = when {
+            criticalCount > 0 -> SeverityCritical
+            highCount > 0 -> SeverityHigh
+            mediumCount > 0 -> SeverityMedium
+            else -> SuccessGreen
+        },
+        animationSpec = tween(500),
+        label = "banner_color"
+    )
+
+    AnimatedVisibility(
+        visible = totalCount > 0,
+        enter = fadeIn(tween(300)) + expandVertically(),
+        exit = fadeOut(tween(200)) + shrinkVertically()
+    ) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(onClick = onViewAlerts)
+                .semantics {
+                    contentDescription = "$totalCount active alerts: $criticalCount critical, $highCount high, $mediumCount medium"
+                    role = Role.Button
+                },
+            shape = RoundedCornerShape(12.dp),
+            color = bannerColor.copy(alpha = 0.1f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.NotificationsActive,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = bannerColor
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$totalCount Active Alerts",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = bannerColor
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (criticalCount > 0) {
+                            Text(
+                                text = "$criticalCount critical",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SeverityCritical
+                            )
+                        }
+                        if (highCount > 0) {
+                            Text(
+                                text = "$highCount high",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SeverityHigh
+                            )
+                        }
+                        if (mediumCount > 0) {
+                            Text(
+                                text = "$mediumCount medium",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SeverityMedium
+                            )
+                        }
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = bannerColor
+                )
+            }
+        }
+    }
+}
+
+// ==========================================================================
+// 11. DailyProtectionSummaryCard
+// ==========================================================================
+
+/**
+ * A summary card showing the day's protection metrics at a glance.
+ * Designed for the dashboard home screen.
+ *
+ * @param protectionScore Current protection score (0-100).
+ * @param detectionsToday Number of detections today.
+ * @param textsScanned Number of texts scanned today.
+ * @param topEntityType Most detected entity type today.
+ * @param averageConfidence Average detection confidence today.
+ * @param modifier Optional modifier.
+ */
+@Composable
+fun DailyProtectionSummaryCard(
+    protectionScore: Int,
+    detectionsToday: Int,
+    textsScanned: Int,
+    topEntityType: EntityType? = null,
+    averageConfidence: Float = 0f,
+    modifier: Modifier = Modifier
+) {
+    val scoreColor by animateColorAsState(
+        targetValue = when {
+            protectionScore >= 80 -> SuccessGreen
+            protectionScore >= 50 -> AlertOrange
+            else -> AlertRed
+        },
+        animationSpec = tween(500),
+        label = "summary_score_color"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = buildString {
+                    append("Daily protection summary. ")
+                    append("Score: $protectionScore. ")
+                    append("$detectionsToday detections, $textsScanned texts scanned. ")
+                    topEntityType?.let { append("Most detected: ${it.displayName}.") }
+                }
+            },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Today's Summary",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = scoreColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = "Score: $protectionScore",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = scoreColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                SummaryMetric(
+                    label = "Detections",
+                    value = detectionsToday.toString(),
+                    color = if (detectionsToday > 0) AlertOrange else SuccessGreen
+                )
+
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(40.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                SummaryMetric(
+                    label = "Scanned",
+                    value = textsScanned.toString(),
+                    color = TrustBlue
+                )
+
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(40.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                SummaryMetric(
+                    label = "Avg Conf.",
+                    value = if (averageConfidence > 0) "${(averageConfidence * 100).toInt()}%" else "--",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            topEntityType?.let { type ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = entityTypeIcon(type),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Most detected: ${type.displayName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(
+    label: String,
+    value: String,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.semantics {
+            contentDescription = "$label: $value"
+        }
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+// ==========================================================================
+// Additional preview composables
+// ==========================================================================
+
+@Preview(showBackground = true, name = "Alert Count Banner - Critical")
+@Composable
+private fun AlertCountBannerCriticalPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        AlertCountBanner(
+            criticalCount = 2,
+            highCount = 5,
+            mediumCount = 8,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Alert Count Banner - High Only")
+@Composable
+private fun AlertCountBannerHighPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        AlertCountBanner(
+            criticalCount = 0,
+            highCount = 3,
+            mediumCount = 2,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Daily Protection Summary")
+@Composable
+private fun DailyProtectionSummaryCardPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        DailyProtectionSummaryCard(
+            protectionScore = 85,
+            detectionsToday = 7,
+            textsScanned = 234,
+            topEntityType = EntityType.EMAIL,
+            averageConfidence = 0.82f,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Daily Protection Summary - No Detections")
+@Composable
+private fun DailyProtectionSummaryCardEmptyPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        DailyProtectionSummaryCard(
+            protectionScore = 100,
+            detectionsToday = 0,
+            textsScanned = 50,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Privacy Trends - All Improving")
+@Composable
+private fun PrivacyTrendCardImprovingPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        PrivacyTrendCard(
+            trends = listOf(
+                PrivacyTrendData("Daily Detections", 3, 10),
+                PrivacyTrendData("Critical Alerts", 0, 3),
+                PrivacyTrendData("Response Time", 28, 45, "ms")
+            ),
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Privacy Trends - Worsening")
+@Composable
+private fun PrivacyTrendCardWorseningPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        PrivacyTrendCard(
+            trends = listOf(
+                PrivacyTrendData("Daily Detections", 15, 5),
+                PrivacyTrendData("Critical Alerts", 4, 1),
+                PrivacyTrendData("Avg Latency", 85, 42, "ms")
+            ),
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Inference Performance - Initializing")
+@Composable
+private fun InferencePerformanceInitializingPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        InferencePerformanceCard(
+            data = InferencePerformanceData(
+                modelState = ModelState.Initializing,
+                averageLatencyMs = 0,
+                totalInferences = 0
+            ),
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Severity Heatmap - Empty")
+@Composable
+private fun SeverityHeatmapEmptyPreview() {
+    PrivacyGuardTheme(dynamicColor = false) {
+        SeverityHeatmap(
+            cells = (0 until 4).flatMap { week ->
+                (0 until 7).map { day ->
+                    HeatmapCell(day = day, week = week, count = 0)
+                }
+            },
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}

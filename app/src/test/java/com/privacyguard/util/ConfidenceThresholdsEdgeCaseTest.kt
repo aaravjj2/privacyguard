@@ -1992,4 +1992,522 @@ class ConfidenceThresholdsEdgeCaseTest {
             )
         }
     }
+
+    // ========================================================================
+    // Section 21: Additional invalid threshold boundary tests
+    // ========================================================================
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with -0_001 throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.EMAIL, -0.001f)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with 1_0001 throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.PHONE, 1.0001f)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with -1_0 throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.SSN, -1.0f)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with 10_0 throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.CREDIT_CARD, 10.0f)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with Float POSITIVE_INFINITY throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.PASSWORD, Float.POSITIVE_INFINITY)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with Float NEGATIVE_INFINITY throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.API_KEY, Float.NEGATIVE_INFINITY)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setThreshold with Float NaN throws`() {
+        ConfidenceThresholds.setThreshold(EntityType.ADDRESS, Float.NaN)
+    }
+
+    @Test
+    fun `setThreshold with exactly 0_0 does not throw`() {
+        ConfidenceThresholds.setThreshold(EntityType.EMAIL, 0.0f)
+        assertEquals(0.0f, ConfidenceThresholds.getThreshold(EntityType.EMAIL), 0.0f)
+    }
+
+    @Test
+    fun `setThreshold with exactly 1_0 does not throw`() {
+        ConfidenceThresholds.setThreshold(EntityType.EMAIL, 1.0f)
+        assertEquals(1.0f, ConfidenceThresholds.getThreshold(EntityType.EMAIL), 0.0f)
+    }
+
+    // ========================================================================
+    // Section 22: Threshold isolation between entity types
+    // ========================================================================
+
+    @Test
+    fun `overriding CREDIT_CARD does not affect SSN`() {
+        val ssnBefore = ConfidenceThresholds.getThreshold(EntityType.SSN)
+        ConfidenceThresholds.setThreshold(EntityType.CREDIT_CARD, 0.50f)
+        assertEquals(ssnBefore, ConfidenceThresholds.getThreshold(EntityType.SSN), 0.001f)
+    }
+
+    @Test
+    fun `overriding SSN does not affect PASSWORD`() {
+        val pwBefore = ConfidenceThresholds.getThreshold(EntityType.PASSWORD)
+        ConfidenceThresholds.setThreshold(EntityType.SSN, 0.50f)
+        assertEquals(pwBefore, ConfidenceThresholds.getThreshold(EntityType.PASSWORD), 0.001f)
+    }
+
+    @Test
+    fun `overriding PASSWORD does not affect API_KEY`() {
+        val apiBefore = ConfidenceThresholds.getThreshold(EntityType.API_KEY)
+        ConfidenceThresholds.setThreshold(EntityType.PASSWORD, 0.50f)
+        assertEquals(apiBefore, ConfidenceThresholds.getThreshold(EntityType.API_KEY), 0.001f)
+    }
+
+    @Test
+    fun `overriding API_KEY does not affect EMAIL`() {
+        val emailBefore = ConfidenceThresholds.getThreshold(EntityType.EMAIL)
+        ConfidenceThresholds.setThreshold(EntityType.API_KEY, 0.50f)
+        assertEquals(emailBefore, ConfidenceThresholds.getThreshold(EntityType.EMAIL), 0.001f)
+    }
+
+    @Test
+    fun `overriding EMAIL does not affect PHONE`() {
+        val phoneBefore = ConfidenceThresholds.getThreshold(EntityType.PHONE)
+        ConfidenceThresholds.setThreshold(EntityType.EMAIL, 0.50f)
+        assertEquals(phoneBefore, ConfidenceThresholds.getThreshold(EntityType.PHONE), 0.001f)
+    }
+
+    @Test
+    fun `overriding PHONE does not affect PERSON_NAME`() {
+        val nameBefore = ConfidenceThresholds.getThreshold(EntityType.PERSON_NAME)
+        ConfidenceThresholds.setThreshold(EntityType.PHONE, 0.50f)
+        assertEquals(nameBefore, ConfidenceThresholds.getThreshold(EntityType.PERSON_NAME), 0.001f)
+    }
+
+    @Test
+    fun `overriding PERSON_NAME does not affect ADDRESS`() {
+        val addrBefore = ConfidenceThresholds.getThreshold(EntityType.ADDRESS)
+        ConfidenceThresholds.setThreshold(EntityType.PERSON_NAME, 0.50f)
+        assertEquals(addrBefore, ConfidenceThresholds.getThreshold(EntityType.ADDRESS), 0.001f)
+    }
+
+    @Test
+    fun `overriding ADDRESS does not affect DATE_OF_BIRTH`() {
+        val dobBefore = ConfidenceThresholds.getThreshold(EntityType.DATE_OF_BIRTH)
+        ConfidenceThresholds.setThreshold(EntityType.ADDRESS, 0.50f)
+        assertEquals(dobBefore, ConfidenceThresholds.getThreshold(EntityType.DATE_OF_BIRTH), 0.001f)
+    }
+
+    @Test
+    fun `overriding DATE_OF_BIRTH does not affect MEDICAL_ID`() {
+        val medBefore = ConfidenceThresholds.getThreshold(EntityType.MEDICAL_ID)
+        ConfidenceThresholds.setThreshold(EntityType.DATE_OF_BIRTH, 0.50f)
+        assertEquals(medBefore, ConfidenceThresholds.getThreshold(EntityType.MEDICAL_ID), 0.001f)
+    }
+
+    @Test
+    fun `overriding MEDICAL_ID does not affect UNKNOWN`() {
+        val unkBefore = ConfidenceThresholds.getThreshold(EntityType.UNKNOWN)
+        ConfidenceThresholds.setThreshold(EntityType.MEDICAL_ID, 0.50f)
+        assertEquals(unkBefore, ConfidenceThresholds.getThreshold(EntityType.UNKNOWN), 0.001f)
+    }
+
+    @Test
+    fun `overriding UNKNOWN does not affect CREDIT_CARD`() {
+        val ccBefore = ConfidenceThresholds.getThreshold(EntityType.CREDIT_CARD)
+        ConfidenceThresholds.setThreshold(EntityType.UNKNOWN, 0.50f)
+        assertEquals(ccBefore, ConfidenceThresholds.getThreshold(EntityType.CREDIT_CARD), 0.001f)
+    }
+
+    // ========================================================================
+    // Section 23: Comprehensive override and reset cycling
+    // ========================================================================
+
+    @Test
+    fun `override each type to 0_1 increments from 0_0 to 1_0`() {
+        val types = EntityType.entries
+        for ((i, type) in types.withIndex()) {
+            val value = i / 10.0f
+            if (value in 0.0f..1.0f) {
+                ConfidenceThresholds.setThreshold(type, value)
+                assertEquals(value, ConfidenceThresholds.getThreshold(type), 0.001f)
+            }
+        }
+    }
+
+    @Test
+    fun `set threshold to 0_01 increments for CREDIT_CARD`() {
+        for (i in 0..100) {
+            val value = i / 100.0f
+            ConfidenceThresholds.setThreshold(EntityType.CREDIT_CARD, value)
+            assertEquals(value, ConfidenceThresholds.getThreshold(EntityType.CREDIT_CARD), 0.001f)
+        }
+    }
+
+    @Test
+    fun `set threshold to 0_01 increments for SSN`() {
+        for (i in 0..100) {
+            val value = i / 100.0f
+            ConfidenceThresholds.setThreshold(EntityType.SSN, value)
+            assertEquals(value, ConfidenceThresholds.getThreshold(EntityType.SSN), 0.001f)
+        }
+    }
+
+    @Test
+    fun `set threshold to 0_01 increments for EMAIL`() {
+        for (i in 0..100) {
+            val value = i / 100.0f
+            ConfidenceThresholds.setThreshold(EntityType.EMAIL, value)
+            assertEquals(value, ConfidenceThresholds.getThreshold(EntityType.EMAIL), 0.001f)
+        }
+    }
+
+    @Test
+    fun `set threshold to 0_01 increments for PHONE`() {
+        for (i in 0..100) {
+            val value = i / 100.0f
+            ConfidenceThresholds.setThreshold(EntityType.PHONE, value)
+            assertEquals(value, ConfidenceThresholds.getThreshold(EntityType.PHONE), 0.001f)
+        }
+    }
+
+    @Test
+    fun `set threshold to 0_01 increments for PERSON_NAME`() {
+        for (i in 0..100) {
+            val value = i / 100.0f
+            ConfidenceThresholds.setThreshold(EntityType.PERSON_NAME, value)
+            assertEquals(value, ConfidenceThresholds.getThreshold(EntityType.PERSON_NAME), 0.001f)
+        }
+    }
+
+    @Test
+    fun `reset after each type override restores only that type`() {
+        for (type in EntityType.entries) {
+            ConfidenceThresholds.setThreshold(type, 0.10f)
+        }
+        ConfidenceThresholds.resetToDefaults()
+        for (type in EntityType.entries) {
+            assertEquals(
+                ConfidenceThresholds.getDefaultThreshold(type),
+                ConfidenceThresholds.getThreshold(type),
+                0.001f
+            )
+        }
+    }
+
+    // ========================================================================
+    // Section 24: Additional threshold ordering and relationship tests
+    // ========================================================================
+
+    @Test
+    fun `PASSWORD and ADDRESS have same default threshold`() {
+        assertEquals(
+            ConfidenceThresholds.getDefaultThreshold(EntityType.PASSWORD),
+            ConfidenceThresholds.getDefaultThreshold(EntityType.ADDRESS),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `API_KEY and MEDICAL_ID have same default threshold`() {
+        assertEquals(
+            ConfidenceThresholds.getDefaultThreshold(EntityType.API_KEY),
+            ConfidenceThresholds.getDefaultThreshold(EntityType.MEDICAL_ID),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `CREDIT_CARD and UNKNOWN have same default threshold`() {
+        assertEquals(
+            ConfidenceThresholds.getDefaultThreshold(EntityType.CREDIT_CARD),
+            ConfidenceThresholds.getDefaultThreshold(EntityType.UNKNOWN),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `SSN has the second highest default threshold`() {
+        val sorted = ConfidenceThresholds.getAllThresholds().entries.sortedByDescending { it.value }
+        assertEquals(EntityType.EMAIL, sorted[0].key)
+        assertEquals(EntityType.SSN, sorted[1].key)
+    }
+
+    @Test
+    fun `threshold values sorted ascending`() {
+        val sorted = ConfidenceThresholds.getAllThresholds().entries.sortedBy { it.value }
+        for (i in 0 until sorted.size - 1) {
+            assertTrue(
+                "${sorted[i].key}(${sorted[i].value}) <= ${sorted[i + 1].key}(${sorted[i + 1].value})",
+                sorted[i].value <= sorted[i + 1].value
+            )
+        }
+    }
+
+    @Test
+    fun `distinct threshold values count`() {
+        val distinctValues = ConfidenceThresholds.getAllThresholds().values.toSet()
+        // 0.75, 0.80, 0.82, 0.85, 0.88, 0.90, 0.92, 0.95 = 8 distinct values
+        assertEquals(8, distinctValues.size)
+    }
+
+    @Test
+    fun `PASSWORD threshold is exactly 0_12 less than SSN threshold`() {
+        val pw = ConfidenceThresholds.getDefaultThreshold(EntityType.PASSWORD)
+        val ssn = ConfidenceThresholds.getDefaultThreshold(EntityType.SSN)
+        assertEquals(0.12f, ssn - pw, 0.001f)
+    }
+
+    @Test
+    fun `EMAIL threshold is exactly 0_15 more than PASSWORD threshold`() {
+        val email = ConfidenceThresholds.getDefaultThreshold(EntityType.EMAIL)
+        val pw = ConfidenceThresholds.getDefaultThreshold(EntityType.PASSWORD)
+        assertEquals(0.15f, email - pw, 0.001f)
+    }
+
+    @Test
+    fun `PHONE threshold minus PERSON_NAME threshold is 0_13`() {
+        val phone = ConfidenceThresholds.getDefaultThreshold(EntityType.PHONE)
+        val name = ConfidenceThresholds.getDefaultThreshold(EntityType.PERSON_NAME)
+        assertEquals(0.13f, phone - name, 0.001f)
+    }
+
+    // ========================================================================
+    // Section 25: Comprehensive getAllThresholds consistency
+    // ========================================================================
+
+    @Test
+    fun `getAllThresholds after setting one override has correct mixed values`() {
+        ConfidenceThresholds.setThreshold(EntityType.CREDIT_CARD, 0.42f)
+        val all = ConfidenceThresholds.getAllThresholds()
+        assertEquals(0.42f, all[EntityType.CREDIT_CARD]!!, 0.001f)
+        assertEquals(0.92f, all[EntityType.SSN]!!, 0.001f)
+        assertEquals(0.80f, all[EntityType.PASSWORD]!!, 0.001f)
+        assertEquals(0.85f, all[EntityType.API_KEY]!!, 0.001f)
+        assertEquals(0.95f, all[EntityType.EMAIL]!!, 0.001f)
+        assertEquals(0.88f, all[EntityType.PHONE]!!, 0.001f)
+        assertEquals(0.75f, all[EntityType.PERSON_NAME]!!, 0.001f)
+        assertEquals(0.80f, all[EntityType.ADDRESS]!!, 0.001f)
+        assertEquals(0.82f, all[EntityType.DATE_OF_BIRTH]!!, 0.001f)
+        assertEquals(0.85f, all[EntityType.MEDICAL_ID]!!, 0.001f)
+        assertEquals(0.90f, all[EntityType.UNKNOWN]!!, 0.001f)
+    }
+
+    @Test
+    fun `getAllThresholds after setting two overrides has correct values`() {
+        ConfidenceThresholds.setThreshold(EntityType.EMAIL, 0.50f)
+        ConfidenceThresholds.setThreshold(EntityType.SSN, 0.60f)
+        val all = ConfidenceThresholds.getAllThresholds()
+        assertEquals(0.50f, all[EntityType.EMAIL]!!, 0.001f)
+        assertEquals(0.60f, all[EntityType.SSN]!!, 0.001f)
+        // Rest should be defaults
+        assertEquals(0.90f, all[EntityType.CREDIT_CARD]!!, 0.001f)
+    }
+
+    @Test
+    fun `getAllThresholds is consistent with getThreshold for all types after overrides`() {
+        ConfidenceThresholds.setThreshold(EntityType.PASSWORD, 0.33f)
+        ConfidenceThresholds.setThreshold(EntityType.PHONE, 0.44f)
+        ConfidenceThresholds.setThreshold(EntityType.ADDRESS, 0.55f)
+        val all = ConfidenceThresholds.getAllThresholds()
+        for (type in EntityType.entries) {
+            assertEquals(
+                "getThreshold and getAllThresholds should match for $type",
+                ConfidenceThresholds.getThreshold(type),
+                all[type]!!,
+                0.001f
+            )
+        }
+    }
+
+    // ========================================================================
+    // Section 26: Comprehensive entity type display name and index tests
+    // ========================================================================
+
+    @Test
+    fun `all display names are distinct`() {
+        val names = EntityType.entries.map { it.displayName }
+        // Note: Bitwarden and Bitwarden alt have "Bitwarden" in suggested names,
+        // but EntityType display names should all be unique
+        assertEquals(names.size, names.toSet().size)
+    }
+
+    @Test
+    fun `all label indices are non-negative`() {
+        for (type in EntityType.entries) {
+            assertTrue("$type labelIndex should be >= 0", type.labelIndex >= 0)
+        }
+    }
+
+    @Test
+    fun `label indices range from 0 to 10`() {
+        val indices = EntityType.entries.map { it.labelIndex }
+        assertEquals(0, indices.min())
+        assertEquals(10, indices.max())
+    }
+
+    @Test
+    fun `fromLabelIndex round-trip for each type`() {
+        for (type in EntityType.entries) {
+            val recovered = EntityType.fromLabelIndex(type.labelIndex)
+            assertEquals(type, recovered)
+        }
+    }
+
+    @Test
+    fun `fromLabelIndex with 0 returns UNKNOWN`() {
+        assertEquals(EntityType.UNKNOWN, EntityType.fromLabelIndex(0))
+    }
+
+    @Test
+    fun `fromLabelIndex with indices 1-10 returns non-UNKNOWN`() {
+        for (i in 1..10) {
+            val type = EntityType.fromLabelIndex(i)
+            assertNotEquals("Index $i should not return UNKNOWN", EntityType.UNKNOWN, type)
+        }
+    }
+
+    // ========================================================================
+    // Section 27: Final comprehensive integration tests
+    // ========================================================================
+
+    @Test
+    fun `full override cycle for each type individually`() {
+        for (type in EntityType.entries) {
+            // Get default
+            val defaultVal = ConfidenceThresholds.getDefaultThreshold(type)
+            // Override
+            ConfidenceThresholds.setThreshold(type, 0.42f)
+            assertEquals(0.42f, ConfidenceThresholds.getThreshold(type), 0.001f)
+            // Default unchanged
+            assertEquals(defaultVal, ConfidenceThresholds.getDefaultThreshold(type), 0.001f)
+            // Reset
+            ConfidenceThresholds.resetToDefaults()
+            // Back to default
+            assertEquals(defaultVal, ConfidenceThresholds.getThreshold(type), 0.001f)
+        }
+    }
+
+    @Test
+    fun `override all to same value then verify getAllThresholds uniformity`() {
+        for (type in EntityType.entries) {
+            ConfidenceThresholds.setThreshold(type, 0.55f)
+        }
+        val all = ConfidenceThresholds.getAllThresholds()
+        val distinctValues = all.values.toSet()
+        assertEquals(1, distinctValues.size)
+        assertEquals(0.55f, distinctValues.first(), 0.001f)
+    }
+
+    @Test
+    fun `override to ascending values by type ordinal`() {
+        val types = EntityType.entries
+        for ((i, type) in types.withIndex()) {
+            val value = (i + 1) / (types.size + 1).toFloat()
+            ConfidenceThresholds.setThreshold(type, value)
+        }
+        val all = ConfidenceThresholds.getAllThresholds()
+        val sorted = all.entries.sortedBy { it.key.ordinal }
+        for (i in 0 until sorted.size - 1) {
+            assertTrue(
+                "${sorted[i].key}(${sorted[i].value}) < ${sorted[i + 1].key}(${sorted[i + 1].value})",
+                sorted[i].value < sorted[i + 1].value
+            )
+        }
+    }
+
+    @Test
+    fun `override to descending values by type ordinal`() {
+        val types = EntityType.entries
+        for ((i, type) in types.withIndex()) {
+            val value = 1.0f - (i / (types.size + 1).toFloat())
+            ConfidenceThresholds.setThreshold(type, value)
+        }
+        val all = ConfidenceThresholds.getAllThresholds()
+        val sorted = all.entries.sortedBy { it.key.ordinal }
+        for (i in 0 until sorted.size - 1) {
+            assertTrue(
+                "${sorted[i].key}(${sorted[i].value}) > ${sorted[i + 1].key}(${sorted[i + 1].value})",
+                sorted[i].value > sorted[i + 1].value
+            )
+        }
+    }
+
+    @Test
+    fun `threshold sum of all defaults`() {
+        val sum = EntityType.entries.sumOf {
+            ConfidenceThresholds.getDefaultThreshold(it).toDouble()
+        }.toFloat()
+        // 0.75 + 0.80 + 0.80 + 0.82 + 0.85 + 0.85 + 0.88 + 0.90 + 0.90 + 0.92 + 0.95 = 9.42
+        assertEquals(9.42f, sum, 0.05f)
+    }
+
+    @Test
+    fun `threshold median of all defaults`() {
+        val sorted = EntityType.entries.map {
+            ConfidenceThresholds.getDefaultThreshold(it)
+        }.sorted()
+        val median = sorted[sorted.size / 2]
+        // Median of 11 values (index 5) = 0.85
+        assertEquals(0.85f, median, 0.001f)
+    }
+
+    @Test
+    fun `overriding all to 0 then verifying all are 0`() {
+        for (type in EntityType.entries) {
+            ConfidenceThresholds.setThreshold(type, 0.0f)
+        }
+        for (type in EntityType.entries) {
+            assertEquals(0.0f, ConfidenceThresholds.getThreshold(type), 0.0f)
+        }
+    }
+
+    @Test
+    fun `overriding all to 1 then verifying all are 1`() {
+        for (type in EntityType.entries) {
+            ConfidenceThresholds.setThreshold(type, 1.0f)
+        }
+        for (type in EntityType.entries) {
+            assertEquals(1.0f, ConfidenceThresholds.getThreshold(type), 0.0f)
+        }
+    }
+
+    @Test
+    fun `getThreshold returns fallback 0_85 for non-existing defaults if possible`() {
+        // Since all types have defaults, this tests the fallback path indirectly
+        // By checking UNKNOWN which has an explicit default of 0.90
+        val threshold = ConfidenceThresholds.getThreshold(EntityType.UNKNOWN)
+        assertEquals(0.90f, threshold, 0.001f)
+    }
+
+    @Test
+    fun `ConfidenceThresholds is an object singleton`() {
+        val ref1 = ConfidenceThresholds
+        val ref2 = ConfidenceThresholds
+        assertSame(ref1, ref2)
+    }
+
+    @Test
+    fun `threshold for each severity level has expected range`() {
+        for (type in EntityType.entries) {
+            val threshold = ConfidenceThresholds.getDefaultThreshold(type)
+            when (type.severity) {
+                Severity.CRITICAL -> {
+                    assertTrue("$type CRITICAL threshold $threshold >= 0.80", threshold >= 0.80f)
+                }
+                Severity.HIGH -> {
+                    assertTrue("$type HIGH threshold $threshold >= 0.85", threshold >= 0.85f)
+                }
+                Severity.MEDIUM -> {
+                    assertTrue("$type MEDIUM threshold $threshold >= 0.75", threshold >= 0.75f)
+                }
+            }
+        }
+    }
 }

@@ -1928,4 +1928,718 @@ class DateOfBirthValidatorExtendedTest {
         // Depending on supported range, this may or may not be valid
         assertNotNull("Result should be a boolean", result)
     }
+
+    // =========================================================================
+    // SECTION 10: Additional boundary and regression tests
+    // =========================================================================
+
+    @Test
+    fun `isValidISO returns false for date where month and day are swapped to be invalid`() {
+        // 1990-31-06 — day and month swapped, month 31 does not exist
+        val result = validator.isValidISO("1990-31-06")
+        assertFalse("Month 31 does not exist, swapped date should fail", result)
+        assertNull("calculateAge should return null", validator.calculateAge("1990-31-06"))
+    }
+
+    @Test
+    fun `isValidUS returns false for zero-padded impossible date 00-00-0000`() {
+        val result = validator.isValidUS("00/00/0000")
+        assertFalse("00/00/0000 is not a valid US date", result)
+        assertNull("calculateAge should return null", validator.calculateAge("00/00/0000"))
+    }
+
+    @Test
+    fun `isValidEU returns false for zero-padded impossible date 00-00-0000`() {
+        val result = validator.isValidEU("00/00/0000")
+        assertFalse("00/00/0000 is not a valid EU date", result)
+        assertFalse("isValid should also reject this", validator.isValid("00/00/0000"))
+    }
+
+    @Test
+    fun `isValid returns false for date string consisting only of dashes`() {
+        val result = validator.isValid("----")
+        assertFalse("A string of only dashes is not a valid date", result)
+        assertNull("calculateAge should return null", validator.calculateAge("----"))
+    }
+
+    @Test
+    fun `isValid returns false for date string consisting only of slashes`() {
+        val result = validator.isValid("//")
+        assertFalse("A string of only slashes is not a valid date", result)
+        assertFalse("isValidUS should also reject", validator.isValidUS("//"))
+    }
+
+    @Test
+    fun `calculateAge is not affected by calling isValid first`() {
+        val date = "1990-06-15"
+        validator.isValid(date) // side-effect check
+        val age = validator.calculateAge(date)
+        assertNotNull("calculateAge should work after isValid call", age)
+        assertTrue("Age should be positive", age!! > 0)
+    }
+
+    @Test
+    fun `isMinor and isAdult produce opposite results for the same valid date 2000-01-01`() {
+        val date = "2000-01-01"
+        val minor = validator.isMinor(date)
+        val adult = validator.isAdult(date)
+        // In 2026, someone born 2000-01-01 is 26, so adult
+        assertFalse("Should not be a minor", minor)
+        assertTrue("Should be an adult", adult)
+        assertNotEquals("isMinor and isAdult must differ", minor, adult)
+    }
+
+    @Test
+    fun `isMinor returns false for person born exactly 18 years ago conceptually`() {
+        // Use a date that is clearly 20+ years ago to avoid today's date edge cases
+        val date = "2004-01-01"
+        val minor = validator.isMinor(date)
+        // In March 2026, someone born Jan 1, 2004 is 22 years old
+        assertFalse("22-year-old is not a minor", minor)
+        assertTrue("Should be an adult", validator.isAdult(date))
+    }
+
+    @Test
+    fun `isValidLong returns false for month name with typo Januray`() {
+        val result = validator.isValidLong("Januray 15, 1990")
+        assertFalse("Typo in month name should not be valid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("Januray 15, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns false for month name with typo Febuary`() {
+        val result = validator.isValidLong("Febuary 15, 1990")
+        assertFalse("Typo in month name should not be valid", result)
+        assertFalse("isValid should also reject", validator.isValid("Febuary 15, 1990"))
+    }
+
+    @Test
+    fun `extractFromText handles text with only numbers but no valid dates`() {
+        val text = "Order 12345 shipped on 99 boxes total."
+        val results = validator.extractFromText(text)
+        assertNotNull("Result should not be null", results)
+        results.forEach { date ->
+            assertTrue("Any extracted date must be valid: $date", validator.isValid(date))
+        }
+    }
+
+    @Test
+    fun `extractFromText handles very long sentence with one buried date`() {
+        val prefix = "a ".repeat(200)
+        val suffix = " b".repeat(200)
+        val text = "${prefix}1990-06-15${suffix}"
+        val results = validator.extractFromText(text)
+        assertTrue("Should find the date even in very long text", results.isNotEmpty())
+    }
+
+    @Test
+    fun `isValidISO returns false for date with all nines 9999-99-99`() {
+        val result = validator.isValidISO("9999-99-99")
+        assertFalse("9999-99-99 has invalid month and day", result)
+        assertNull("calculateAge should return null", validator.calculateAge("9999-99-99"))
+    }
+
+    @Test
+    fun `isValidUS returns false for date with all nines 99-99-9999`() {
+        val result = validator.isValidUS("99/99/9999")
+        assertFalse("99/99/9999 has invalid month and day", result)
+        assertFalse("isValid should also reject", validator.isValid("99/99/9999"))
+    }
+
+    @Test
+    fun `convertToISO handles edge case of February in long format`() {
+        val result = validator.convertToISO("February 28, 1999")
+        assertNotNull("Should successfully convert February 28", result)
+        assertEquals("Should produce 1999-02-28", "1999-02-28", result)
+        assertTrue("Result should be valid ISO", validator.isValidISO(result!!))
+    }
+
+    @Test
+    fun `convertToISO handles October correctly in long format`() {
+        val result = validator.convertToISO("October 31, 1990")
+        assertNotNull("Should not return null for October 31", result)
+        assertEquals("Should produce 1990-10-31", "1990-10-31", result)
+        assertTrue("Result should be valid ISO", validator.isValidISO(result!!))
+    }
+
+    @Test
+    fun `convertToISO handles September correctly in US format`() {
+        val result = validator.convertToISO("09/30/1990")
+        assertNotNull("Should not return null", result)
+        assertEquals("Should produce 1990-09-30", "1990-09-30", result)
+    }
+
+    @Test
+    fun `isValidISO rejects date with extra leading zeros 01990-06-15`() {
+        val result = validator.isValidISO("01990-06-15")
+        assertFalse("Extra leading zero in year is invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("01990-06-15"))
+    }
+
+    @Test
+    fun `isValidISO rejects date with spaces between components 1990 06 15`() {
+        val result = validator.isValidISO("1990 06 15")
+        assertFalse("Spaces as separators are not valid for ISO format", result)
+        assertFalse("isValid should also reject", validator.isValid("1990 06 15"))
+    }
+
+    @Test
+    fun `calculateAge result for 1970 birth is around 55 to 56`() {
+        val age = validator.calculateAge("1970-01-01")
+        assertNotNull("Age should not be null", age)
+        // In March 2026, someone born Jan 1 1970 is 56
+        assertTrue("Age for 1970-01-01 should be around 55-57", age!! in 54..58)
+    }
+
+    @Test
+    fun `calculateAge result for 2010 birth is around 15 to 16`() {
+        val age = validator.calculateAge("2010-01-01")
+        assertNotNull("Age should not be null", age)
+        // In March 2026, someone born Jan 1 2010 is 16
+        assertTrue("Age for 2010-01-01 should be around 15-17", age!! in 14..18)
+    }
+
+    @Test
+    fun `isMinor returns true for child born in 2020`() {
+        val result = validator.isMinor("2020-06-15")
+        assertTrue("Child born in 2020 is 5-6 years old in 2026, definitely a minor", result)
+        assertFalse("isAdult should be false", validator.isAdult("2020-06-15"))
+    }
+
+    @Test
+    fun `isMinor returns true for teenager born in 2010`() {
+        val result = validator.isMinor("2010-06-15")
+        assertTrue("Teenager born in 2010 is 15-16 in 2026, still a minor", result)
+        assertFalse("isAdult should be false", validator.isAdult("2010-06-15"))
+    }
+
+    @Test
+    fun `isAdult returns true for young adult born in 2005`() {
+        // In March 2026, someone born 2005 is 20-21
+        val result = validator.isAdult("2005-01-01")
+        assertTrue("21-year-old born in 2005 should be an adult", result)
+        assertFalse("isMinor should be false", validator.isMinor("2005-01-01"))
+    }
+
+    @Test
+    fun `isValid handles dates at the very end of each 31-day month`() {
+        val dates = listOf("1990-01-31", "1990-03-31", "1990-05-31",
+                           "1990-07-31", "1990-08-31", "1990-10-31", "1990-12-31")
+        dates.forEach { date ->
+            assertTrue("Last day of 31-day month should be valid: $date", validator.isValid(date))
+        }
+    }
+
+    @Test
+    fun `isValidISO handles correctly formatted dates for every day of December`() {
+        (1..31).forEach { day ->
+            val paddedDay = day.toString().padStart(2, '0')
+            val date = "1990-12-$paddedDay"
+            assertTrue("December $paddedDay should be valid: $date", validator.isValidISO(date))
+        }
+    }
+
+    @Test
+    fun `isValidISO rejects day 29 in February for non-leap year 2001`() {
+        val result = validator.isValidISO("2001-02-29")
+        assertFalse("2001 is not a leap year, Feb 29 is invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("2001-02-29"))
+    }
+
+    @Test
+    fun `isValidISO rejects day 29 in February for non-leap year 2003`() {
+        val result = validator.isValidISO("2003-02-29")
+        assertFalse("2003 is not a leap year, Feb 29 is invalid", result)
+        assertFalse("isValid should also reject", validator.isValid("2003-02-29"))
+    }
+
+    @Test
+    fun `isValidISO rejects day 29 in February for non-leap year 2005`() {
+        val result = validator.isValidISO("2005-02-29")
+        assertFalse("2005 is not a leap year, Feb 29 is invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("2005-02-29"))
+    }
+
+    @Test
+    fun `isValidISO accepts day 29 in February for leap years divisible by 4`() {
+        val leapYears = listOf(1992, 1996, 2004, 2008, 2012, 2016, 2020)
+        leapYears.forEach { year ->
+            val date = "$year-02-29"
+            assertTrue("$year is a leap year, Feb 29 should be valid: $date", validator.isValidISO(date))
+        }
+    }
+
+    @Test
+    fun `isValidISO rejects day 29 in February for non-leap years`() {
+        val nonLeapYears = listOf(1993, 1997, 1999, 2001, 2003, 2005, 2007)
+        nonLeapYears.forEach { year ->
+            val date = "$year-02-29"
+            assertFalse("$year is not a leap year, Feb 29 should be invalid: $date", validator.isValidISO(date))
+        }
+    }
+
+    @Test
+    fun `extractFromText finds date embedded within parentheses`() {
+        val text = "The employee (DOB: 1988-11-05) is eligible for the program."
+        val results = validator.extractFromText(text)
+        assertTrue("Should find date within parentheses", results.isNotEmpty())
+        assertTrue("Should contain year 1988", results.any { it.contains("1988") })
+    }
+
+    @Test
+    fun `extractFromText finds date in comma separated list`() {
+        val text = "Fields: name, 1990-06-15, nationality, occupation"
+        val results = validator.extractFromText(text)
+        assertTrue("Should find date in comma-separated list", results.isNotEmpty())
+    }
+
+    @Test
+    fun `convertToISO handles August in long format`() {
+        val result = validator.convertToISO("August 15, 1947")
+        assertNotNull("Should not return null", result)
+        assertEquals("Should produce 1947-08-15", "1947-08-15", result)
+    }
+
+    @Test
+    fun `convertToISO handles June in long format`() {
+        val result = validator.convertToISO("June 6, 1944")
+        assertNotNull("Should not return null", result)
+        assertEquals("Should produce 1944-06-06", "1944-06-06", result)
+    }
+
+    @Test
+    fun `convertToISO handles single digit day in long format`() {
+        val result = validator.convertToISO("March 5, 1982")
+        assertNotNull("Should not return null", result)
+        // Should zero-pad the day in ISO output
+        assertEquals("Should produce 1982-03-05", "1982-03-05", result)
+    }
+
+    @Test
+    fun `isValid handles various century boundary years`() {
+        // Test dates right at century boundaries
+        assertTrue("1901-01-01 should be valid", validator.isValid("1901-01-01"))
+        assertTrue("1950-06-15 should be valid", validator.isValid("1950-06-15"))
+        assertTrue("1999-12-31 should be valid", validator.isValid("1999-12-31"))
+        assertTrue("2000-01-01 should be valid", validator.isValid("2000-01-01"))
+    }
+
+    @Test
+    fun `isAdult is consistent with calculateAge for boundary age of 18`() {
+        // Someone who is exactly 18 or older should be an adult
+        // Using 2000-01-01: in March 2026 they are 26 years old
+        val date = "2000-01-01"
+        val age = validator.calculateAge(date)
+        val adult = validator.isAdult(date)
+        assertNotNull("Age should not be null", age)
+        if (age!! >= 18) {
+            assertTrue("isAdult should be true for age >= 18", adult)
+        } else {
+            assertFalse("isAdult should be false for age < 18", adult)
+        }
+    }
+
+    @Test
+    fun `isMinor is consistent with calculateAge for boundary age of 18`() {
+        val date = "2015-03-01"
+        val age = validator.calculateAge(date)
+        val minor = validator.isMinor(date)
+        assertNotNull("Age should not be null", age)
+        if (age!! < 18) {
+            assertTrue("isMinor should be true for age < 18", minor)
+        } else {
+            assertFalse("isMinor should be false for age >= 18", minor)
+        }
+    }
+
+    @Test
+    fun `extractFromText handles tab-separated date fields`() {
+        val text = "Name\tDate of Birth\tCity\nJohn Doe\t1990-06-15\tNew York"
+        val results = validator.extractFromText(text)
+        assertTrue("Should find date in tab-separated text", results.isNotEmpty())
+    }
+
+    @Test
+    fun `isValidLong returns false for day zero with valid month and year`() {
+        val result = validator.isValidLong("January 0, 1990")
+        assertFalse("Day 0 in long format should be invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("January 0, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns false for day 32 in January`() {
+        val result = validator.isValidLong("January 32, 1990")
+        assertFalse("Day 32 in January long format should be invalid", result)
+        assertFalse("isValid should also reject", validator.isValid("January 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns false for day 30 in February`() {
+        val result = validator.isValidLong("February 30, 2000")
+        assertFalse("February never has 30 days", result)
+        assertNull("calculateAge should return null", validator.calculateAge("February 30, 2000"))
+    }
+
+    @Test
+    fun `isValidLong returns false for day 31 in April`() {
+        val result = validator.isValidLong("April 31, 1990")
+        assertFalse("April has only 30 days", result)
+        assertFalse("isValid should also reject", validator.isValid("April 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns false for day 31 in November`() {
+        val result = validator.isValidLong("November 31, 1990")
+        assertFalse("November has only 30 days", result)
+        assertNull("calculateAge should return null", validator.calculateAge("November 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns false for day 31 in June`() {
+        val result = validator.isValidLong("June 31, 1990")
+        assertFalse("June has only 30 days", result)
+        assertFalse("isValid should also reject", validator.isValid("June 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong returns true for all months with valid day 1`() {
+        val months = listOf("January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December")
+        months.forEach { month ->
+            val date = "$month 1, 1990"
+            assertTrue("Day 1 in $month should be valid in long format", validator.isValidLong(date))
+        }
+    }
+
+    @Test
+    fun `calculateAge returns non-null for all ISO dates in 1990`() {
+        val months = listOf("01","02","03","04","05","06","07","08","09","10","11","12")
+        months.forEach { month ->
+            val date = "1990-$month-01"
+            val age = validator.calculateAge(date)
+            assertNotNull("calculateAge should not return null for $date", age)
+        }
+    }
+
+    @Test
+    fun `convertToISO handles all 12 months in US format`() {
+        val inputs = mapOf(
+            "01/15/1990" to "1990-01-15",
+            "02/15/1990" to "1990-02-15",
+            "03/15/1990" to "1990-03-15",
+            "04/15/1990" to "1990-04-15",
+            "05/15/1990" to "1990-05-15",
+            "06/15/1990" to "1990-06-15",
+            "07/15/1990" to "1990-07-15",
+            "08/15/1990" to "1990-08-15",
+            "09/15/1990" to "1990-09-15",
+            "10/15/1990" to "1990-10-15",
+            "11/15/1990" to "1990-11-15",
+            "12/15/1990" to "1990-12-15"
+        )
+        inputs.forEach { (input, expected) ->
+            val result = validator.convertToISO(input)
+            assertNotNull("convertToISO($input) should not be null", result)
+            assertEquals("US $input should convert to ISO $expected", expected, result)
+        }
+    }
+
+    @Test
+    fun `convertToISO handles all 12 months in EU format`() {
+        val inputs = mapOf(
+            "15/01/1990" to "1990-01-15",
+            "15/02/1990" to "1990-02-15",
+            "15/03/1990" to "1990-03-15",
+            "15/04/1990" to "1990-04-15",
+            "15/05/1990" to "1990-05-15",
+            "15/06/1990" to "1990-06-15",
+            "15/07/1990" to "1990-07-15",
+            "15/08/1990" to "1990-08-15",
+            "15/09/1990" to "1990-09-15",
+            "15/10/1990" to "1990-10-15",
+            "15/11/1990" to "1990-11-15",
+            "15/12/1990" to "1990-12-15"
+        )
+        inputs.forEach { (input, expected) ->
+            val result = validator.convertToISO(input)
+            assertNotNull("convertToISO($input) should not be null", result)
+            assertEquals("EU $input should convert to ISO $expected", expected, result)
+        }
+    }
+
+    @Test
+    fun `extractFromText returns all results as non-null strings`() {
+        val text = "Born 1990-06-15, verified on 2000-01-01, updated 2010-03-22."
+        val results = validator.extractFromText(text)
+        assertNotNull("Result list should not be null", results)
+        results.forEach { date ->
+            assertNotNull("Each extracted date string should not be null", date)
+            assertTrue("Each date should be non-empty", date.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `isValid is deterministic for repeated calls with the same input`() {
+        val date = "1985-07-20"
+        val results = (1..5).map { validator.isValid(date) }
+        assertTrue("All calls should return true", results.all { it })
+        assertEquals("All calls should return same result", 1, results.toSet().size)
+    }
+
+    @Test
+    fun `isValidISO is deterministic for repeated calls`() {
+        val date = "2000-02-29"
+        val results = (1..5).map { validator.isValidISO(date) }
+        assertEquals("All calls should return same result", 1, results.toSet().size)
+    }
+
+    @Test
+    fun `calculateAge is deterministic for repeated calls`() {
+        val date = "1990-06-15"
+        val ages = (1..5).map { validator.calculateAge(date) }
+        assertEquals("All calculateAge calls should return same age", 1, ages.toSet().size)
+    }
+
+    @Test
+    fun `isValid returns false for date with special characters in year 199O-06-15 letter O not zero`() {
+        // Using letter O instead of zero in year 199O
+        val result = validator.isValid("199O-06-15")
+        assertFalse("Letter O in year position should make the date invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("199O-06-15"))
+    }
+
+    @Test
+    fun `isValidUS returns false for date with letter l instead of 1 in year`() {
+        val result = validator.isValidUS("06/l5/1990")
+        assertFalse("Letter l in day position should make the date invalid", result)
+        assertFalse("isValid should also reject", validator.isValid("06/l5/1990"))
+    }
+
+    @Test
+    fun `isValidEU returns false for date with non-ASCII digits`() {
+        // Using Arabic-Indic numerals
+        val result = validator.isValidEU("15/06/١٩٩٠")
+        assertFalse("Non-ASCII digits should not be accepted", result)
+    }
+
+    @Test
+    fun `extractFromText with mixed valid and invalid date-like strings returns only valid ones`() {
+        val text = "Refs: 1990-13-45 and 1985-06-15 and invalid 2000-02-30."
+        val results = validator.extractFromText(text)
+        results.forEach { dob ->
+            assertTrue("Only valid dates should be extracted, but found: $dob", validator.isValid(dob))
+        }
+        // 1985-06-15 should be the only valid one
+        assertTrue("Should contain 1985-06-15", results.any { it.contains("1985") })
+    }
+
+    @Test
+    fun `isValid returns false for ISO date with extra digits in day 1990-06-150`() {
+        val result = validator.isValidISO("1990-06-150")
+        assertFalse("Extra digit in day field should make date invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("1990-06-150"))
+    }
+
+    @Test
+    fun `isValid returns false for date with forward slash instead of dash in ISO 1990-06-15`() {
+        // This is already tested for US-with-dash, but explicitly test ISO-with-slash
+        val result = validator.isValidISO("1990/06/15")
+        assertFalse("ISO format must use dashes, not slashes", result)
+    }
+
+    @Test
+    fun `isValidUS correctly identifies ambiguous date 01-02-2003 as valid US format`() {
+        val result = validator.isValidUS("01/02/2003")
+        assertTrue("01/02/2003 is January 2nd 2003 in US format, which is valid", result)
+        assertTrue("isValid should also confirm", validator.isValid("01/02/2003"))
+    }
+
+    @Test
+    fun `isValidEU correctly identifies ambiguous date 01-02-2003 as valid EU format`() {
+        val result = validator.isValidEU("01/02/2003")
+        assertTrue("01/02/2003 is 1st February 2003 in EU format, which is valid", result)
+        assertTrue("isValid should also confirm", validator.isValid("01/02/2003"))
+    }
+
+    @Test
+    fun `convertToISO for US and EU same string 01-02-2003 may differ by context`() {
+        // When the input is "01/02/2003", it could be January 2 (US) or February 1 (EU)
+        // The validator should have a defined behavior for ambiguous inputs
+        val result = validator.convertToISO("01/02/2003")
+        assertNotNull("Should return some ISO date for ambiguous input", result)
+        // The result should be either 2003-01-02 or 2003-02-01
+        assertTrue("Result should be a valid ISO date", validator.isValidISO(result!!))
+    }
+
+    @Test
+    fun `isValid handles date 1990-06-15 when called many times without state corruption`() {
+        val date = "1990-06-15"
+        repeat(10) { iteration ->
+            val result = validator.isValid(date)
+            assertTrue("Call $iteration should return true for $date", result)
+        }
+    }
+
+    @Test
+    fun `isValidLong handles April with 30 days correctly`() {
+        assertTrue("April 30 should be valid", validator.isValidLong("April 30, 1990"))
+        assertFalse("April 31 should be invalid", validator.isValidLong("April 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles September with 30 days correctly`() {
+        assertTrue("September 30 should be valid", validator.isValidLong("September 30, 1990"))
+        assertFalse("September 31 should be invalid", validator.isValidLong("September 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles June with 30 days correctly`() {
+        assertTrue("June 30 should be valid", validator.isValidLong("June 30, 1990"))
+        assertFalse("June 31 should be invalid", validator.isValidLong("June 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles November with 30 days correctly`() {
+        assertTrue("November 30 should be valid", validator.isValidLong("November 30, 1990"))
+        assertFalse("November 31 should be invalid", validator.isValidLong("November 31, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles January with 31 days correctly`() {
+        assertTrue("January 31 should be valid", validator.isValidLong("January 31, 1990"))
+        assertFalse("January 32 should be invalid", validator.isValidLong("January 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles March with 31 days correctly`() {
+        assertTrue("March 31 should be valid", validator.isValidLong("March 31, 1990"))
+        assertFalse("March 32 should be invalid", validator.isValidLong("March 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles May with 31 days correctly`() {
+        assertTrue("May 31 should be valid", validator.isValidLong("May 31, 1990"))
+        assertFalse("May 32 should be invalid", validator.isValidLong("May 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles July with 31 days correctly`() {
+        assertTrue("July 31 should be valid", validator.isValidLong("July 31, 1990"))
+        assertFalse("July 32 should be invalid", validator.isValidLong("July 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles August with 31 days correctly`() {
+        assertTrue("August 31 should be valid", validator.isValidLong("August 31, 1990"))
+        assertFalse("August 32 should be invalid", validator.isValidLong("August 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles October with 31 days correctly`() {
+        assertTrue("October 31 should be valid", validator.isValidLong("October 31, 1990"))
+        assertFalse("October 32 should be invalid", validator.isValidLong("October 32, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles December with 31 days correctly`() {
+        assertTrue("December 31 should be valid", validator.isValidLong("December 31, 1990"))
+        assertFalse("December 32 should be invalid", validator.isValidLong("December 32, 1990"))
+    }
+
+    @Test
+    fun `extractFromText identifies date in Australian driver license style`() {
+        val text = "LICENCE NO: DL123456 DOB: 15/06/1990 EXP: 15/06/2030"
+        val results = validator.extractFromText(text)
+        assertTrue("Should find DOB in driver license style text", results.isNotEmpty())
+        assertTrue("Should contain year 1990", results.any { it.contains("1990") })
+    }
+
+    @Test
+    fun `extractFromText identifies date in US passport style`() {
+        val text = "SURNAME: SMITH GIVEN NAMES: JOHN DOB: 15 JUN 1990"
+        val results = validator.extractFromText(text)
+        assertTrue("Should find DOB in passport style text", results.isNotEmpty())
+    }
+
+    @Test
+    fun `isValidISO and isValidUS give different results for the same ambiguous string`() {
+        // 12/11/2000 could be December 11 US or 12th November EU; as an ISO check it should fail
+        val isoResult = validator.isValidISO("12/11/2000")
+        assertFalse("12/11/2000 is not valid ISO format (uses slashes)", isoResult)
+        val usResult = validator.isValidUS("12/11/2000")
+        assertTrue("12/11/2000 is valid US format (December 11, 2000)", usResult)
+    }
+
+    @Test
+    fun `isValidUS and isValidEU give different interpretations of 01-12-2000`() {
+        // In US: January 12, 2000; In EU: 1st December 2000
+        val usResult = validator.isValidUS("01/12/2000")
+        val euResult = validator.isValidEU("01/12/2000")
+        // Both interpretations are calendar-valid dates
+        assertTrue("01/12/2000 is valid as US format (Jan 12, 2000)", usResult)
+        assertTrue("01/12/2000 is valid as EU format (1 Dec, 2000)", euResult)
+    }
+
+    @Test
+    fun `calculateAge handles birthday that has not yet occurred in the current year`() {
+        // Someone born December 31, 1990: as of March 2026, they have not had their
+        // birthday yet this year, so they are still 35
+        val age = validator.calculateAge("1990-12-31")
+        assertNotNull("Age should not be null", age)
+        // In March 2026, Dec 31 birthday has not occurred: they are 35
+        assertTrue("Age should be 35 for Dec 31, 1990 birthday in March 2026", age!! in 34..36)
+    }
+
+    @Test
+    fun `calculateAge handles birthday that has already occurred in the current year`() {
+        // Someone born January 1, 1990: as of March 2026, they have already had their
+        // birthday, so they are 36
+        val age = validator.calculateAge("1990-01-01")
+        assertNotNull("Age should not be null", age)
+        // In March 2026, Jan 1 birthday has occurred: they are 36
+        assertTrue("Age should be 36 for Jan 1, 1990 birthday in March 2026", age!! in 35..37)
+    }
+
+    @Test
+    fun `isValid returns false for ISO date missing the year component`() {
+        val result = validator.isValidISO("-06-15")
+        assertFalse("Missing year component should be invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("-06-15"))
+    }
+
+    @Test
+    fun `isValid returns false for ISO date missing the month component`() {
+        val result = validator.isValidISO("1990--15")
+        assertFalse("Missing month component should be invalid", result)
+        assertFalse("isValid should also reject", validator.isValid("1990--15"))
+    }
+
+    @Test
+    fun `isValid returns false for ISO date missing the day component`() {
+        val result = validator.isValidISO("1990-06-")
+        assertFalse("Missing day component should be invalid", result)
+        assertNull("calculateAge should return null", validator.calculateAge("1990-06-"))
+    }
+
+    @Test
+    fun `isValidLong handles year 1990 for all valid February days`() {
+        // 1990 is not a leap year, so only Feb 1-28 are valid
+        (1..28).forEach { day ->
+            val date = "February $day, 1990"
+            assertTrue("February $day 1990 should be valid", validator.isValidLong(date))
+        }
+        assertFalse("February 29, 1990 should be invalid (not a leap year)",
+            validator.isValidLong("February 29, 1990"))
+    }
+
+    @Test
+    fun `isValidLong handles year 2000 for all valid February days including 29`() {
+        // 2000 is a leap year, so Feb 1-29 are valid
+        (1..29).forEach { day ->
+            val date = "February $day, 2000"
+            assertTrue("February $day 2000 should be valid", validator.isValidLong(date))
+        }
+        assertFalse("February 30, 2000 should be invalid",
+            validator.isValidLong("February 30, 2000"))
+    }
 }

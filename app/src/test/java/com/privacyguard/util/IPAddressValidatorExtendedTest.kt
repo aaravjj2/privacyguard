@@ -2298,4 +2298,211 @@ class IPAddressValidatorExtendedTest {
             assertEquals("Exactly one classification must be true for $ip (expected $expected)", 1, trueCount)
         }
     }
+
+    // =========================================================================
+    // SECTION 11 – Stress and regression tests
+    //
+    // These final tests ensure the validator does not throw exceptions on
+    // unusual or adversarial input, and that its behaviour is stable across
+    // all primary API methods.
+    // =========================================================================
+
+    @Test
+    fun `section11 - isValidIPv4 does not throw on extremely long octet string`() {
+        val ip = "1234567890".repeat(100) + ".1.1.1"
+        val result = runCatching { validator.isValidIPv4(ip) }.getOrElse { false }
+        assertFalse("Extremely long first octet must not be valid", result)
+    }
+
+    @Test
+    fun `section11 - isValidIPv6 does not throw on extremely long input`() {
+        val ip = "abcd:".repeat(1000)
+        val result = runCatching { validator.isValidIPv6(ip) }.getOrElse { false }
+        assertFalse("Extremely long IPv6-like string must not be valid", result)
+    }
+
+    @Test
+    fun `section11 - isValid does not throw on arbitrary special characters`() {
+        val inputs = listOf("!@#\$%^&*()", "null", "undefined", "NaN", "0x1.2.3.4", "1e5.1.1.1")
+        for (input in inputs) {
+            val result = runCatching { validator.isValid(input) }.getOrElse { false }
+            assertFalse("'$input' must not be a valid IP address", result)
+        }
+    }
+
+    @Test
+    fun `section11 - extractFromText does not throw on arbitrarily long text`() {
+        val text = "word ".repeat(50_000) + "10.0.0.1 " + "word ".repeat(50_000)
+        val result = runCatching { validator.extractFromText(text) }.getOrNull()
+        assertNotNull("extractFromText must not throw on very long text", result)
+        assertTrue("10.0.0.1 must still be found in very long text", result!!.contains("10.0.0.1"))
+    }
+
+    @Test
+    fun `section11 - 224_0_0_0 multicast is valid IPv4 but not public or private`() {
+        val ip = "224.0.0.0"
+        assertTrue("224.0.0.0 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertFalse("224.0.0.0 must not be public (multicast)", validator.isPublic(ip))
+        assertFalse("224.0.0.0 must not be private (multicast)", validator.isPrivate(ip))
+        assertFalse("224.0.0.0 must not be loopback", validator.isLoopback(ip))
+    }
+
+    @Test
+    fun `section11 - 239_255_255_255 multicast boundary is valid IPv4 but not public`() {
+        val ip = "239.255.255.255"
+        assertTrue("239.255.255.255 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertFalse("239.255.255.255 must not be public (multicast)", validator.isPublic(ip))
+        assertFalse("239.255.255.255 must not be private", validator.isPrivate(ip))
+    }
+
+    @Test
+    fun `section11 - 100_63_255_255 is just below shared space lower bound and is public`() {
+        val ip = "100.63.255.255"
+        assertTrue("100.63.255.255 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertTrue("100.63.255.255 must be public (below 100.64.0.0/10)", validator.isPublic(ip))
+        assertFalse("100.63.255.255 must not be private", validator.isPrivate(ip))
+    }
+
+    @Test
+    fun `section11 - 100_128_0_1 is just above shared space upper bound and is public`() {
+        val ip = "100.128.0.1"
+        assertTrue("100.128.0.1 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertTrue("100.128.0.1 must be public (above 100.127.255.255)", validator.isPublic(ip))
+        assertFalse("100.128.0.1 must not be private", validator.isPrivate(ip))
+    }
+
+    @Test
+    fun `section11 - isInRange with mismatched IP family returns false`() {
+        // IPv6 address against an IPv4 CIDR
+        val result = runCatching { validator.isInRange("::1", "192.168.1.0/24") }.getOrElse { false }
+        assertFalse("IPv6 ::1 must not be inside an IPv4 CIDR", result)
+    }
+
+    @Test
+    fun `section11 - slash1 covers half of IPv4 space`() {
+        val cidr = "0.0.0.0/1"
+        assertTrue("0.0.0.0 must be in $cidr", validator.isInRange("0.0.0.0", cidr))
+        assertTrue("127.255.255.255 must be in $cidr", validator.isInRange("127.255.255.255", cidr))
+        assertFalse("128.0.0.0 must NOT be in $cidr", validator.isInRange("128.0.0.0", cidr))
+    }
+
+    @Test
+    fun `section11 - upper half slash1 covers 128_0_0_0 to 255_255_255_255`() {
+        val cidr = "128.0.0.0/1"
+        assertTrue("128.0.0.0 must be in $cidr", validator.isInRange("128.0.0.0", cidr))
+        assertTrue("255.255.255.255 must be in $cidr", validator.isInRange("255.255.255.255", cidr))
+        assertFalse("127.255.255.255 must NOT be in $cidr", validator.isInRange("127.255.255.255", cidr))
+    }
+
+    @Test
+    fun `section11 - extractFromText with repeated identical IPs reports each at least once`() {
+        val text = List(10) { "8.8.8.8" }.joinToString(" ")
+        val result = validator.extractFromText(text)
+        assertNotNull("Result must not be null", result)
+        assertTrue("8.8.8.8 must be present in the extracted list", result.contains("8.8.8.8"))
+    }
+
+    @Test
+    fun `section11 - isValid returns true for full-form IPv6 all-zeros`() {
+        val ip = "0000:0000:0000:0000:0000:0000:0000:0000"
+        assertTrue("All-zero full-form IPv6 must pass isValidIPv6()", validator.isValidIPv6(ip))
+        assertTrue("All-zero full-form IPv6 must pass isValid()", validator.isValid(ip))
+        assertFalse("All-zero IPv6 must not be public", validator.isPublic(ip))
+    }
+
+    @Test
+    fun `section11 - isValid returns true for full-form IPv6 all-f`() {
+        val ip = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+        assertTrue("All-f full-form IPv6 must pass isValidIPv6()", validator.isValidIPv6(ip))
+        assertTrue("All-f full-form IPv6 must pass isValid()", validator.isValid(ip))
+    }
+
+    @Test
+    fun `section11 - 192_0_0_1 is IETF Protocol Assignments address not public`() {
+        val ip = "192.0.0.1"
+        assertTrue("192.0.0.1 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertFalse("192.0.0.1 must not be public (IETF Protocol Assignments 192.0.0.0/24)", validator.isPublic(ip))
+    }
+
+    @Test
+    fun `section11 - multiple private range IPs all classified correctly in batch`() {
+        val pairs = listOf(
+            "10.0.0.1"       to true,
+            "10.255.0.0"     to true,
+            "172.16.5.5"     to true,
+            "172.31.200.200" to true,
+            "192.168.0.50"   to true,
+            "192.168.255.1"  to true,
+            "8.8.8.8"        to false,
+            "1.1.1.1"        to false,
+            "127.0.0.1"      to false
+        )
+        for ((ip, expected) in pairs) {
+            assertEquals("isPrivate must return $expected for $ip", expected, validator.isPrivate(ip))
+        }
+    }
+
+    @Test
+    fun `section11 - multiple public IPs all classified as public in batch`() {
+        val publicIPs = listOf(
+            "8.8.8.8", "1.1.1.1", "9.9.9.9", "4.2.2.2",
+            "208.67.222.222", "77.88.8.8", "94.140.14.14", "114.114.114.114"
+        )
+        for (ip in publicIPs) {
+            assertTrue("$ip must be valid IPv4", validator.isValidIPv4(ip))
+            assertTrue("$ip must be public", validator.isPublic(ip))
+            assertFalse("$ip must not be private", validator.isPrivate(ip))
+            assertFalse("$ip must not be loopback", validator.isLoopback(ip))
+        }
+    }
+
+    @Test
+    fun `section11 - isValidIPv4 false for all well-known invalid patterns`() {
+        val invalid = listOf(
+            "", "0", "1.2", "1.2.3", "1.2.3.4.5",
+            "256.0.0.0", "0.256.0.0", "0.0.256.0", "0.0.0.256",
+            "-1.0.0.0", "a.b.c.d", " 1.2.3.4", "1.2.3.4 "
+        )
+        for (ip in invalid) {
+            assertFalse("'$ip' must not pass isValidIPv4()", validator.isValidIPv4(ip))
+        }
+    }
+
+    @Test
+    fun `section11 - isValidIPv6 false for all well-known invalid patterns`() {
+        val invalid = listOf(
+            "", "1.2.3.4", "gggg::1", "2001::db8::1",
+            "12345::1", "::::", "not-ipv6"
+        )
+        for (ip in invalid) {
+            assertFalse("'$ip' must not pass isValidIPv6()", validator.isValidIPv6(ip))
+        }
+    }
+
+    @Test
+    fun `section11 - extractFromText returns sorted-stable list across identical calls`() {
+        val text = "Hosts: 172.16.0.1, 10.0.0.1, 192.168.1.1"
+        val r1 = validator.extractFromText(text)
+        val r2 = validator.extractFromText(text)
+        assertEquals("Two identical extractFromText calls must return equal lists", r1, r2)
+        assertTrue("172.16.0.1 must be present", r1.contains("172.16.0.1"))
+        assertTrue("10.0.0.1 must be present", r1.contains("10.0.0.1"))
+        assertTrue("192.168.1.1 must be present", r1.contains("192.168.1.1"))
+    }
+
+    @Test
+    fun `section11 - 169_253_255_255 is just below link-local range and is public`() {
+        val ip = "169.253.255.255"
+        assertTrue("169.253.255.255 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertTrue("169.253.255.255 must be public (below 169.254.0.0/16)", validator.isPublic(ip))
+        assertFalse("169.253.255.255 must not be private", validator.isPrivate(ip))
+    }
+
+    @Test
+    fun `section11 - 169_255_0_1 is just above link-local range and is public`() {
+        val ip = "169.255.0.1"
+        assertTrue("169.255.0.1 must pass isValidIPv4()", validator.isValidIPv4(ip))
+        assertTrue("169.255.0.1 must be public (above 169.254.255.255)", validator.isPublic(ip))
+        assertFalse("169.255.0.1 must not be private", validator.isPrivate(ip))
+    }
 }

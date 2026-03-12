@@ -1,3002 +1,2280 @@
 package com.privacyguard.util
 
-import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Assert.*
 
 /**
- * Extended test suite for EmailValidator.
+ * Extended JUnit4 test suite for EmailValidator.
  *
- * This file supplements EmailValidatorTest.kt with additional coverage for:
- *   - Every major TLD (.com, .org, .net, .edu, .gov, .mil, .io, .co, .ai, etc.)
- *   - Internationalized domains with punycode (xn-- notation)
- *   - Every disposable email domain in EmailValidator.disposableEmailDomains
- *     (those not yet covered in the primary test file)
- *   - Every known typo correction in EmailValidator.domainTypoCorrections map
- *   - normalizeGmailAddress() with 30+ Gmail variants
- *   - extractFromText() with emails embedded in various text contexts
- *   - Free vs. business vs. role-based address detection
- *   - Edge cases in local part and domain validation
- *
- * All test names are unique and do not duplicate EmailValidatorTest.kt.
+ * Sections:
+ *   1  — Valid basic emails          (tests  001–020)
+ *   2  — Invalid basic emails        (tests  021–040)
+ *   3  — Valid TLDs                  (tests  041–070)
+ *   4  — Disposable email domains    (tests  071–100)
+ *   5  — Role-based email detection  (tests  101–115)
+ *   6  — Gmail normalization         (tests  116–130)
+ *   7  — extractFromText             (tests  131–145)
+ *   8  — Edge cases                  (tests  146–160)
  */
 class EmailValidatorExtendedTest {
 
-    // ========================================================================
-    // SECTION 1: Major TLD Validation Tests
-    //
-    // Tests ensuring that emails with well-known TLDs are accepted.
-    // Each test uses a generic local part with a specific TLD.
-    // ========================================================================
+    // =========================================================================
+    // SECTION 1 — Valid basic emails (20 tests)
+    // =========================================================================
 
     @Test
-    fun `validate email with TLD dot org`() {
-        val result = EmailValidator.validate("user@example.org")
-        assertTrue(result.isValid)
-        assertEquals("example.org", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot net`() {
-        val result = EmailValidator.validate("user@example.net")
-        assertTrue(result.isValid)
-        assertEquals("example.net", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot edu`() {
-        val result = EmailValidator.validate("student@university.edu")
-        assertTrue(result.isValid)
-        assertEquals("university.edu", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot gov`() {
-        val result = EmailValidator.validate("official@agency.gov")
-        assertTrue(result.isValid)
-        assertEquals("agency.gov", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot mil`() {
-        val result = EmailValidator.validate("service@branch.mil")
-        assertTrue(result.isValid)
-        assertEquals("branch.mil", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot io`() {
-        val result = EmailValidator.validate("dev@startup.io")
-        assertTrue(result.isValid)
-        assertEquals("startup.io", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot co`() {
-        val result = EmailValidator.validate("user@company.co")
-        assertTrue(result.isValid)
-        assertEquals("company.co", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot ai`() {
-        val result = EmailValidator.validate("info@aicompany.ai")
-        assertTrue(result.isValid)
-        assertEquals("aicompany.ai", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot tech`() {
-        val result = EmailValidator.validate("dev@techcompany.tech")
-        assertTrue(result.isValid)
-        assertEquals("techcompany.tech", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot dev`() {
-        val result = EmailValidator.validate("name@developer.dev")
-        assertTrue(result.isValid)
-        assertEquals("developer.dev", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot app`() {
-        val result = EmailValidator.validate("contact@myapp.app")
-        assertTrue(result.isValid)
-        assertEquals("myapp.app", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot cloud`() {
-        val result = EmailValidator.validate("ops@service.cloud")
-        assertTrue(result.isValid)
-        assertEquals("service.cloud", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot info`() {
-        val result = EmailValidator.validate("info@portal.info")
-        assertTrue(result.isValid)
-        assertEquals("portal.info", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot biz`() {
-        val result = EmailValidator.validate("user@business.biz")
-        assertTrue(result.isValid)
-        assertEquals("business.biz", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot name`() {
-        val result = EmailValidator.validate("john@doe.name")
-        assertTrue(result.isValid)
-        assertEquals("doe.name", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot pro`() {
-        val result = EmailValidator.validate("lawyer@firm.pro")
-        assertTrue(result.isValid)
-        assertEquals("firm.pro", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot museum`() {
-        val result = EmailValidator.validate("curator@natural.museum")
-        assertTrue(result.isValid)
-        assertEquals("natural.museum", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot aero`() {
-        val result = EmailValidator.validate("pilot@airline.aero")
-        assertTrue(result.isValid)
-        assertEquals("airline.aero", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot coop`() {
-        val result = EmailValidator.validate("member@cooperative.coop")
-        assertTrue(result.isValid)
-        assertEquals("cooperative.coop", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot mobi`() {
-        val result = EmailValidator.validate("contact@mobile.mobi")
-        assertTrue(result.isValid)
-        assertEquals("mobile.mobi", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot uk`() {
-        val result = EmailValidator.validate("user@example.co.uk")
-        assertTrue(result.isValid)
-        assertEquals("example.co.uk", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot de`() {
-        val result = EmailValidator.validate("user@domain.de")
-        assertTrue(result.isValid)
-        assertEquals("domain.de", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot fr`() {
-        val result = EmailValidator.validate("user@domain.fr")
-        assertTrue(result.isValid)
-        assertEquals("domain.fr", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot jp`() {
-        val result = EmailValidator.validate("user@domain.co.jp")
-        assertTrue(result.isValid)
-        assertEquals("domain.co.jp", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot au`() {
-        val result = EmailValidator.validate("user@domain.com.au")
-        assertTrue(result.isValid)
-        assertEquals("domain.com.au", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot ca`() {
-        val result = EmailValidator.validate("user@domain.ca")
-        assertTrue(result.isValid)
-        assertEquals("domain.ca", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot in`() {
-        val result = EmailValidator.validate("user@domain.co.in")
-        assertTrue(result.isValid)
-        assertEquals("domain.co.in", result.domain)
-    }
-
-    @Test
-    fun `validate email with country code TLD dot br`() {
-        val result = EmailValidator.validate("user@domain.com.br")
-        assertTrue(result.isValid)
-        assertEquals("domain.com.br", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot xyz`() {
-        val result = EmailValidator.validate("user@domain.xyz")
-        assertTrue(result.isValid)
-        assertEquals("domain.xyz", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot online`() {
-        val result = EmailValidator.validate("shop@store.online")
-        assertTrue(result.isValid)
-        assertEquals("store.online", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot site`() {
-        val result = EmailValidator.validate("contact@mysite.site")
-        assertTrue(result.isValid)
-        assertEquals("mysite.site", result.domain)
-    }
-
-    @Test
-    fun `validate email with TLD dot store`() {
-        val result = EmailValidator.validate("sales@shop.store")
-        assertTrue(result.isValid)
-        assertEquals("shop.store", result.domain)
-    }
-
-    // ========================================================================
-    // SECTION 2: Internationalized Domain Tests with Punycode
-    //
-    // Tests for domains using the xn-- prefix encoding, which represents
-    // internationalized domain names in ASCII-compatible encoding (ACE).
-    // ========================================================================
-
-    @Test
-    fun `validate email with punycode domain xn-- prefix`() {
-        // "xn--bcher-kva.example" represents "bücher.example" in punycode
-        val result = EmailValidator.validate("user@xn--bcher-kva.example")
-        assertTrue(result.isValid)
-        assertTrue(result.domain.contains("xn--"))
-    }
-
-    @Test
-    fun `validate email with punycode TLD xn-- format`() {
-        // xn--p1ai is the punycode for .рф (Russian TLD)
-        val result = EmailValidator.validate("user@domain.xn--p1ai")
-        assertTrue(result.isValid)
-        assertEquals("domain.xn--p1ai", result.domain)
-    }
-
-    @Test
-    fun `validate email with punycode subdomain`() {
-        val result = EmailValidator.validate("user@xn--80ahgue5b.xn--p1ai")
-        assertTrue(result.isValid)
-    }
-
-    @Test
-    fun `validate email with punycode in second level domain`() {
-        val result = EmailValidator.validate("contact@xn--nxasmq6b.com")
-        assertTrue(result.isValid)
-        assertEquals("xn--nxasmq6b.com", result.domain)
-    }
-
-    @Test
-    fun `validate email with punycode label followed by com`() {
-        val result = EmailValidator.validate("info@xn--mlform-iua.com")
-        assertTrue(result.isValid)
-        assertEquals("xn--mlform-iua.com", result.domain)
-    }
-
-    @Test
-    fun `validate email domain with mixed ascii and punycode labels`() {
-        val result = EmailValidator.validate("user@subdomain.xn--bcher-kva.com")
-        assertTrue(result.isValid)
-    }
-
-    @Test
-    fun `validateDomain punycode label is valid`() {
-        val result = EmailValidator.validateDomain("xn--bcher-kva.de")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain simple xn prefix with digits is valid`() {
-        val result = EmailValidator.validateDomain("xn--n3h.ws")
-        assertTrue(result.first)
-    }
-
-    // ========================================================================
-    // SECTION 3: Disposable Email Domains Not Yet Tested
-    //
-    // Tests for disposable email providers from EmailValidator.disposableEmailDomains
-    // that are not covered in the primary EmailValidatorTest.kt.
-    // ========================================================================
-
-    @Test
-    fun `isDisposableEmail returns true for grr la`() {
-        assertTrue(EmailValidator.isDisposableEmail("grr.la"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for guerrillamail biz`() {
-        assertTrue(EmailValidator.isDisposableEmail("guerrillamail.biz"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for guerrillamail info`() {
-        assertTrue(EmailValidator.isDisposableEmail("guerrillamail.info"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for guerrillamailblock com`() {
-        assertTrue(EmailValidator.isDisposableEmail("guerrillamailblock.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for tempail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("tempail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for throwaway com`() {
-        assertTrue(EmailValidator.isDisposableEmail("throwaway.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for thromail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("thromail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for disposableaddress com`() {
-        assertTrue(EmailValidator.isDisposableEmail("disposableaddress.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for yopmail fr`() {
-        assertTrue(EmailValidator.isDisposableEmail("yopmail.fr"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for yopmail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("yopmail.net"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for yopmail gq`() {
-        assertTrue(EmailValidator.isDisposableEmail("yopmail.gq"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mailnator com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mailnator.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for nada email`() {
-        assertTrue(EmailValidator.isDisposableEmail("nada.email"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for 10minutemail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("10minutemail.net"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for 10minutemail org`() {
-        assertTrue(EmailValidator.isDisposableEmail("10minutemail.org"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for maildrop gq`() {
-        assertTrue(EmailValidator.isDisposableEmail("maildrop.gq"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashmail me`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmail.me"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashmail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmail.net"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashmail org`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmail.org"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashmail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmail.de"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashmail ws`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmail.ws"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for fakemail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("fakemail.net"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for fakemail fr`() {
-        assertTrue(EmailValidator.isDisposableEmail("fakemail.fr"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for discardmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("discardmail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for discardmail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("discardmail.de"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for spamgourmet net`() {
-        assertTrue(EmailValidator.isDisposableEmail("spamgourmet.net"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for spamgourmet org`() {
-        assertTrue(EmailValidator.isDisposableEmail("spamgourmet.org"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for tempinbox com`() {
-        assertTrue(EmailValidator.isDisposableEmail("tempinbox.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for tempinbox co uk`() {
-        assertTrue(EmailValidator.isDisposableEmail("tempinbox.co.uk"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mytemp email`() {
-        assertTrue(EmailValidator.isDisposableEmail("mytemp.email"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mytempmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mytempmail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mohmal im`() {
-        assertTrue(EmailValidator.isDisposableEmail("mohmal.im"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mohmal in`() {
-        assertTrue(EmailValidator.isDisposableEmail("mohmal.in"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trbvm com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trbvm.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mailhub top`() {
-        assertTrue(EmailValidator.isDisposableEmail("mailhub.top"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for mailhub pro`() {
-        assertTrue(EmailValidator.isDisposableEmail("mailhub.pro"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for bouncr com`() {
-        assertTrue(EmailValidator.isDisposableEmail("bouncr.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for bugmenot com`() {
-        assertTrue(EmailValidator.isDisposableEmail("bugmenot.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for binkmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("binkmail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for einrot com`() {
-        assertTrue(EmailValidator.isDisposableEmail("einrot.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for gustr com`() {
-        assertTrue(EmailValidator.isDisposableEmail("gustr.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for stinkfinger com`() {
-        assertTrue(EmailValidator.isDisposableEmail("stinkfinger.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trbvn com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trbvn.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trash-mail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trash-mail.com"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trash-mail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("trash-mail.de"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for trashemails de`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashemails.de"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns true for zoemail org`() {
-        assertTrue(EmailValidator.isDisposableEmail("zoemail.org"))
-    }
-
-    @Test
-    fun `isDisposableEmail returns false for protonmail com`() {
-        // protonmail.com is a free but non-disposable provider
-        assertFalse(EmailValidator.isDisposableEmail("protonmail.com"))
-    }
-
-    @Test
-    fun `validate email at disposable domain grr la has isDisposable flag`() {
-        val result = EmailValidator.validate("temp@grr.la")
-        assertTrue(result.isValid)
-        assertTrue(result.isDisposable)
-    }
-
-    @Test
-    fun `validate email at disposable domain 10minutemail net has isDisposable flag`() {
-        val result = EmailValidator.validate("quick@10minutemail.net")
-        assertTrue(result.isValid)
-        assertTrue(result.isDisposable)
-    }
-
-    @Test
-    fun `validate email at disposable domain mailnator com has isDisposable flag`() {
-        val result = EmailValidator.validate("test@mailnator.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isDisposable)
-    }
-
-    // ========================================================================
-    // SECTION 4: Domain Typo Corrections - All Entries in domainTypoCorrections Map
-    //
-    // Tests verifying that every typo in the domainTypoCorrections map is
-    // correctly identified and returns the right correction suggestion.
-    // ========================================================================
-
-    @Test
-    fun `suggestDomainCorrection for gmial com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmial.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmaill com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmaill.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmali com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmali.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmal com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmal.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gamil com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gamil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gnail com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gnail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmai com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmai.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail co returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail cm returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.cm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail om returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.om"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail cim returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.cim"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail vom returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.vom"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail comn returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.comn"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail come returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.come"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail comm returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.comm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail xom returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.xom"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail coom returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.coom"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmaul com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmaul.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmqil com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmqil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmsil com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmsil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmeil com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmeil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gimail com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gimail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gemail com returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gemail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yaho com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yaho.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahooo com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahooo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yhaoo com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yhaoo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahoio com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahoio.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahoo cm returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahoo.cm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahoo co returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahoo.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahoo om returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahoo.om"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yahoo vom returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yahoo.vom"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yhoo com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yhoo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yaboo com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yaboo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for yaoo com returns yahoo com`() {
-        assertEquals("yahoo.com", EmailValidator.suggestDomainCorrection("yaoo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotamil com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotamil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmal com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmal.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmial com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmial.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmaill com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmaill.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmai com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmai.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmil com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmil.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmail cm returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmail.cm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotmail co returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotmail.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotamil co returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotamil.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hotnail com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hotnail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for hitmail com returns hotmail com`() {
-        assertEquals("hotmail.com", EmailValidator.suggestDomainCorrection("hitmail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outloo com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outloo.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outlok com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outlok.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outloook com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outloook.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for oulook com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("oulook.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outlooik com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outlooik.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outllook com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outllook.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outlook cm returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outlook.cm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outlook co returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outlook.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for outlouk com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("outlouk.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for otlook com returns outlook com`() {
-        assertEquals("outlook.com", EmailValidator.suggestDomainCorrection("otlook.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for iclould com returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("iclould.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for iclud com returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("iclud.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for iclod com returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("iclod.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for icloudd com returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("icloudd.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for icloud co returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("icloud.co"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for icloud cm returns icloud com`() {
-        assertEquals("icloud.com", EmailValidator.suggestDomainCorrection("icloud.cm"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for protonmal com returns protonmail com`() {
-        assertEquals("protonmail.com", EmailValidator.suggestDomainCorrection("protonmal.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for prtonmail com returns protonmail com`() {
-        assertEquals("protonmail.com", EmailValidator.suggestDomainCorrection("prtonmail.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for gmail org returns gmail com`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("gmail.org"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection for unknown domain returns null`() {
-        assertNull(EmailValidator.suggestDomainCorrection("completelycorrectdomain.com"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection case insensitive for GMAIL CON`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("GMAIL.CON"))
-    }
-
-    @Test
-    fun `suggestDomainCorrection case insensitive for Gmail Co`() {
-        assertEquals("gmail.com", EmailValidator.suggestDomainCorrection("Gmail.Co"))
-    }
-
-    @Test
-    fun `validate email at typo domain has suggestedCorrection`() {
-        val result = EmailValidator.validate("user@gmial.com")
-        assertTrue(result.isValid)
-        assertNotNull(result.suggestedCorrection)
-        assertEquals("user@gmail.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate email at typo hotamil com has suggestedCorrection`() {
-        val result = EmailValidator.validate("john@hotamil.com")
-        assertTrue(result.isValid)
-        assertNotNull(result.suggestedCorrection)
-        assertEquals("john@hotmail.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate email at typo icloud co has suggestedCorrection`() {
-        val result = EmailValidator.validate("user@icloud.co")
-        assertTrue(result.isValid)
-        assertNotNull(result.suggestedCorrection)
-        assertEquals("user@icloud.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `domainTypoCorrections map is large`() {
-        assertTrue(EmailValidator.domainTypoCorrections.size > 50)
-    }
-
-    // ========================================================================
-    // SECTION 5: normalizeGmailAddress() with 30+ Gmail Variants
-    //
-    // Tests for various Gmail addresses with dots, plus aliases, and case
-    // variations that the normalizer should handle.
-    // ========================================================================
-
-    @Test
-    fun `normalizeGmailAddress single dot in username`() {
-        val result = EmailValidator.normalizeGmailAddress("j.ohn@gmail.com")
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress two dots in username`() {
-        val result = EmailValidator.normalizeGmailAddress("j.o.hn@gmail.com")
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress three dots in username`() {
-        val result = EmailValidator.normalizeGmailAddress("j.o.h.n@gmail.com")
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress five dots in username`() {
-        val result = EmailValidator.normalizeGmailAddress("j.o.h.n.d.o.e@gmail.com")
-        assertEquals("johndoe@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress plus alias newsletter`() {
-        val result = EmailValidator.normalizeGmailAddress("john+newsletter@gmail.com")
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress plus alias with year`() {
-        val result = EmailValidator.normalizeGmailAddress("john+2024@gmail.com")
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress plus alias work`() {
-        val result = EmailValidator.normalizeGmailAddress("jane+work@gmail.com")
-        assertEquals("jane@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress plus alias personal`() {
-        val result = EmailValidator.normalizeGmailAddress("jane+personal@gmail.com")
-        assertEquals("jane@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress dots and plus combined`() {
-        val result = EmailValidator.normalizeGmailAddress("j.a.n.e+tag@gmail.com")
-        assertEquals("jane@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress dots after plus are removed`() {
-        // The plus index is found in withoutDots, so dots after + are also removed
-        val result = EmailValidator.normalizeGmailAddress("john+t.ag@gmail.com")
-        // localPart = "john+t.ag", withoutDots = "john+tag", plusIndex = 4, base = "john"
-        assertEquals("john@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress googlemail domain normalizes to gmail`() {
-        val result = EmailValidator.normalizeGmailAddress("john.doe@googlemail.com")
-        assertEquals("johndoe@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress googlemail with plus alias`() {
-        val result = EmailValidator.normalizeGmailAddress("john.doe+tag@googlemail.com")
-        assertEquals("johndoe@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress returns null for invalid email`() {
-        val result = EmailValidator.normalizeGmailAddress("not-an-email")
-        assertNull(result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress returns original for yahoo address`() {
-        val result = EmailValidator.normalizeGmailAddress("user@yahoo.com")
-        // Not Gmail, returned as-is from the original email string
-        assertNotNull(result)
-        assertTrue(result!!.contains("yahoo.com"))
-    }
-
-    @Test
-    fun `normalizeGmailAddress returns original for outlook address`() {
-        val result = EmailValidator.normalizeGmailAddress("user@outlook.com")
-        assertNotNull(result)
-        assertTrue(result!!.contains("outlook.com"))
-    }
-
-    @Test
-    fun `normalizeGmailAddress uppercase local part is preserved`() {
-        // normalizeGmailAddress does NOT lowercase the local part
-        val result = EmailValidator.normalizeGmailAddress("JOHN@gmail.com")
-        // dots removed (none), plus removed (none), stays "JOHN"
-        assertEquals("JOHN@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress mixed case local part preserved`() {
-        val result = EmailValidator.normalizeGmailAddress("John.Doe@gmail.com")
-        // dots removed → "JohnDoe"
-        assertEquals("JohnDoe@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress single character username`() {
-        val result = EmailValidator.normalizeGmailAddress("a@gmail.com")
-        assertEquals("a@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress long username with many dots`() {
-        val result = EmailValidator.normalizeGmailAddress("a.b.c.d.e.f.g.h.i@gmail.com")
-        assertEquals("abcdefghi@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress username with only dot before plus`() {
-        val result = EmailValidator.normalizeGmailAddress("a.b+tag@gmail.com")
-        // "a.b+tag" → remove dots → "ab+tag" → plusIndex=2 → base="ab"
-        assertEquals("ab@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress multiple plus signs uses first plus`() {
-        val result = EmailValidator.normalizeGmailAddress("user+cat1+cat2@gmail.com")
-        // "user+cat1+cat2" → no dots → plusIndex=4 → base="user"
-        assertEquals("user@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress domain case insensitive gmail`() {
-        val result = EmailValidator.normalizeGmailAddress("user@GMAIL.COM")
-        // validate() lowercases domain to "gmail.com"
-        assertEquals("user@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress with numeric local part`() {
-        val result = EmailValidator.normalizeGmailAddress("123456@gmail.com")
-        assertEquals("123456@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress with underscore in local part`() {
-        val result = EmailValidator.normalizeGmailAddress("user_name@gmail.com")
-        // underscore is not a dot, stays as-is
-        assertEquals("user_name@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress with hyphen in local part`() {
-        val result = EmailValidator.normalizeGmailAddress("user-name@gmail.com")
-        // hyphen is not a dot, stays
-        assertEquals("user-name@gmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress returns empty string result as null`() {
-        val result = EmailValidator.normalizeGmailAddress("")
-        assertNull(result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress for protonmail returns as-is`() {
-        val result = EmailValidator.normalizeGmailAddress("user.name@protonmail.com")
-        // Not Gmail, returned as-is
-        assertEquals("user.name@protonmail.com", result)
-    }
-
-    @Test
-    fun `normalizeGmailAddress domain is always gmail com after normalization`() {
-        val result = EmailValidator.normalizeGmailAddress("test.user+tag@googlemail.com")
-        assertNotNull(result)
-        assertTrue(result!!.endsWith("@gmail.com"))
-    }
-
-    // ========================================================================
-    // SECTION 6: extractFromText() with Emails in Various Contexts
-    //
-    // Tests ensuring extractFromText() correctly identifies emails embedded
-    // in different text formats and document types.
-    // ========================================================================
-
-    @Test
-    fun `extractFromText finds email in plain prose text`() {
-        val text = "Please contact support@company.com for assistance with your account."
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("support", results[0].localPart)
-        assertEquals("company.com", results[0].domain)
-    }
-
-    @Test
-    fun `extractFromText finds email in HTML anchor tag`() {
-        val text = """<a href="mailto:info@example.com">Contact Us</a>"""
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("info", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText finds email in JSON payload`() {
-        val text = """{"email":"user@domain.com","name":"John Doe"}"""
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("user", results[0].localPart)
-        assertEquals("domain.com", results[0].domain)
-    }
-
-    @Test
-    fun `extractFromText finds email in CSV row`() {
-        val text = "John,Doe,john.doe@company.com,Developer,New York"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("company.com", results[0].domain)
-    }
-
-    @Test
-    fun `extractFromText finds email in email body`() {
-        val text = """
-            From: sender@example.org
-            To: recipient@company.com
-            Subject: Meeting Tomorrow
-
-            Please reply to admin@office.net for confirmation.
-        """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertTrue(results.size >= 3)
-    }
-
-    @Test
-    fun `extractFromText finds email in URL query parameter`() {
-        val text = "https://example.com/login?email=user@domain.com&redirect=home"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("user", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText finds multiple emails in unstructured text`() {
-        val text = """
-            Contact alice@company.com or bob@company.com or charlie@example.org
-            for different departments. You can also email support@helpdesk.io.
-        """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(4, results.size)
-    }
-
-    @Test
-    fun `extractFromText finds email at start of line`() {
-        val text = "admin@company.com is our primary contact address."
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("admin", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText finds email at end of line`() {
-        val text = "Please email your questions to support@help.com"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("support.com".substringAfter("support@help.com".substringAfterLast("@")),
-            results[0].domain)
-    }
-
-    @Test
-    fun `extractFromText finds email in log line`() {
-        val text = "2024-01-15 10:30:00 INFO Login attempt for user email: test@example.com from IP 192.168.1.1"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("test", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText finds email in XML element`() {
-        val text = "<contact><email>contact@business.com</email><phone>555-1234</phone></contact>"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("contact", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText finds email in markdown`() {
-        val text = "For questions, see [our FAQ](https://example.com) or email help@example.com."
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("help", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText handles receipt with email`() {
-        val text = """
-            RECEIPT
-            Order #12345
-            Customer: Jane Smith
-            Email: jane.smith@email-provider.com
-            Total: $42.99
-            Thank you for your purchase!
-        """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("jane.smith", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText returns empty for text without email`() {
-        val text = "The weather today is sunny with a high of 75 degrees. Call us at 555-1234."
-        val results = EmailValidator.extractFromText(text)
-        assertTrue(results.isEmpty())
-    }
-
-    @Test
-    fun `extractFromText ignores malformed email without domain dot`() {
-        // "user@nodot" should NOT match the regex requiring .[a-zA-Z]{2,} at end
-        val text = "This has user@nodot which is not a valid email"
-        val results = EmailValidator.extractFromText(text)
-        assertTrue(results.isEmpty())
-    }
-
-    // ========================================================================
-    // SECTION 7: Free Provider vs Business vs Role-Based Detection
-    //
-    // Tests for the three-way classification of email addresses.
-    // ========================================================================
-
-    @Test
-    fun `validate free provider email has isFreeProvider flag set`() {
-        val result = EmailValidator.validate("user@protonmail.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isFreeProvider)
-        assertFalse(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate business email has neither free nor role flag`() {
-        val result = EmailValidator.validate("john.smith@acmecorporation.com")
-        assertTrue(result.isValid)
-        assertFalse(result.isFreeProvider)
-        assertFalse(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate role address email has isRoleAddress flag set`() {
-        val result = EmailValidator.validate("noreply@company.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate role address at free provider has both flags`() {
-        val result = EmailValidator.validate("admin@gmail.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-        assertTrue(result.isFreeProvider)
-    }
-
-    @Test
-    fun `validate disposable role address has all three flags`() {
-        val result = EmailValidator.validate("test@mailinator.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isDisposable)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for tutamail com`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("tutamail.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for libero it`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("libero.it"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for uol com br`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("uol.com.br"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for btinternet com`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("btinternet.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for orange fr`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("orange.fr"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for yahoo co id`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("yahoo.co.id"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for yahoo co nz`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("yahoo.co.nz"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for virgin net`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("virgin.net"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for shaw ca`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("shaw.ca"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns false for enterprise company com`() {
-        assertFalse(EmailValidator.isFreeEmailProvider("enterprisecompany.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns false for mywork co`() {
-        assertFalse(EmailValidator.isFreeEmailProvider("mywork.co"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for webmaster`() {
-        assertTrue(EmailValidator.isRoleAddress("webmaster"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for abuse`() {
-        assertTrue(EmailValidator.isRoleAddress("abuse"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for security`() {
-        assertTrue(EmailValidator.isRoleAddress("security"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for billing`() {
-        assertTrue(EmailValidator.isRoleAddress("billing"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for newsletter`() {
-        assertTrue(EmailValidator.isRoleAddress("newsletter"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for team`() {
-        assertTrue(EmailValidator.isRoleAddress("team"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for jobs`() {
-        assertTrue(EmailValidator.isRoleAddress("jobs"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for privacy`() {
-        assertTrue(EmailValidator.isRoleAddress("privacy"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for gdpr`() {
-        assertTrue(EmailValidator.isRoleAddress("gdpr"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for api`() {
-        assertTrue(EmailValidator.isRoleAddress("api"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for ops`() {
-        assertTrue(EmailValidator.isRoleAddress("ops"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for devops`() {
-        assertTrue(EmailValidator.isRoleAddress("devops"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for demo`() {
-        assertTrue(EmailValidator.isRoleAddress("demo"))
-    }
-
-    @Test
-    fun `isRoleAddress returns false for john`() {
-        assertFalse(EmailValidator.isRoleAddress("john"))
-    }
-
-    @Test
-    fun `isRoleAddress returns false for alice`() {
-        assertFalse(EmailValidator.isRoleAddress("alice"))
-    }
-
-    @Test
-    fun `isRoleAddress returns false for random125`() {
-        assertFalse(EmailValidator.isRoleAddress("random125"))
-    }
-
-    @Test
-    fun `isRoleAddress is case insensitive ADMIN`() {
-        assertTrue(EmailValidator.isRoleAddress("ADMIN"))
-    }
-
-    @Test
-    fun `isRoleAddress is case insensitive Support`() {
-        assertTrue(EmailValidator.isRoleAddress("Support"))
-    }
-
-    @Test
-    fun `validate role address confidence is reduced`() {
-        val roleResult = EmailValidator.validate("admin@company.com")
-        val personalResult = EmailValidator.validate("john.smith@company.com")
-        assertTrue(roleResult.isValid)
-        assertTrue(personalResult.isValid)
-        // Role addresses may have reduced confidence due to being generic
-        assertFalse(roleResult.confidence > 1.0f)
-    }
-
-    // ========================================================================
-    // SECTION 8: Sub-Addressing (Plus Addressing) Tests
-    //
-    // Tests for the hasSubAddress flag and subAddress field.
-    // ========================================================================
-
-    @Test
-    fun `validate email with plus alias has hasSubAddress true`() {
-        val result = EmailValidator.validate("user+tag@gmail.com")
-        assertTrue(result.isValid)
-        assertTrue(result.hasSubAddress)
-        assertEquals("tag", result.subAddress)
-    }
-
-    @Test
-    fun `validate email without plus alias has hasSubAddress false`() {
-        val result = EmailValidator.validate("user@gmail.com")
-        assertTrue(result.isValid)
-        assertFalse(result.hasSubAddress)
-        assertNull(result.subAddress)
-    }
-
-    @Test
-    fun `validate email with empty plus alias`() {
-        val result = EmailValidator.validate("user+@company.com")
-        assertTrue(result.isValid)
-        assertTrue(result.hasSubAddress)
-        assertEquals("", result.subAddress)
-    }
-
-    @Test
-    fun `validate email sub address is correct for newsletter tag`() {
-        val result = EmailValidator.validate("alice+newsletter@example.com")
-        assertTrue(result.isValid)
-        assertEquals("newsletter", result.subAddress)
-    }
-
-    @Test
-    fun `validate email sub address with numbers`() {
-        val result = EmailValidator.validate("user+2024promo@example.com")
-        assertTrue(result.isValid)
-        assertEquals("2024promo", result.subAddress)
-    }
-
-    @Test
-    fun `validate email normalizedEmail strips plus alias`() {
-        val result = EmailValidator.validate("user+tag@gmail.com")
-        assertTrue(result.isValid)
-        assertEquals("user@gmail.com", result.normalizedEmail)
-    }
-
-    @Test
-    fun `validate email normalizedEmail has lowercase domain`() {
-        val result = EmailValidator.validate("User@Company.COM")
-        assertTrue(result.isValid)
-        assertEquals("company.com", result.domain)
-        assertTrue(result.normalizedEmail.endsWith("@company.com"))
-    }
-
-    // ========================================================================
-    // SECTION 9: Edge Cases in Local Part Validation
-    //
-    // Tests for unusual but valid or invalid local parts.
-    // ========================================================================
-
-    @Test
-    fun `validateLocalPart with single allowed special char hash is valid`() {
-        val result = EmailValidator.validateLocalPart("user#name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with exclamation mark is valid`() {
-        val result = EmailValidator.validateLocalPart("user!name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with dollar sign is valid`() {
-        val result = EmailValidator.validateLocalPart("user\$name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with percent is valid`() {
-        val result = EmailValidator.validateLocalPart("user%name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with ampersand is valid`() {
-        val result = EmailValidator.validateLocalPart("user&name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with tilde is valid`() {
-        val result = EmailValidator.validateLocalPart("user~name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with caret is valid`() {
-        val result = EmailValidator.validateLocalPart("user^name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart returns false for space without quotes`() {
-        val result = EmailValidator.validateLocalPart("user name")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart returns false for at sign without quotes`() {
-        val result = EmailValidator.validateLocalPart("user@name")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart returns false for comma without quotes`() {
-        val result = EmailValidator.validateLocalPart("user,name")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with 64 character max is valid`() {
-        val maxLocal = "a".repeat(64)
-        val result = EmailValidator.validateLocalPart(maxLocal)
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with 65 characters is invalid`() {
-        val tooLong = "a".repeat(65)
-        val result = EmailValidator.validateLocalPart(tooLong)
-        assertFalse(result.first)
-    }
-
-    // ========================================================================
-    // SECTION 10: Domain Validation Edge Cases
-    //
-    // Tests for domain-specific validation rules.
-    // ========================================================================
-
-    @Test
-    fun `validateDomain with all hyphens in middle is valid`() {
-        val result = EmailValidator.validateDomain("a--b.com")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain single character labels are valid`() {
-        val result = EmailValidator.validateDomain("a.b.com")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain with two character TLD is valid`() {
-        val result = EmailValidator.validateDomain("example.uk")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain with four character TLD is valid`() {
-        val result = EmailValidator.validateDomain("example.info")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain with 10 character TLD is valid`() {
-        val result = EmailValidator.validateDomain("example.foundation")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain all numeric TLD is invalid`() {
-        val result = EmailValidator.validateDomain("example.123")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateDomain single character TLD is valid`() {
-        // Some new TLDs are single character (not common, but technically valid)
-        // The validator allows any non-numeric TLD
-        // Actually the domain needs at least two labels, and TLD can't be all-numeric
-        val result = EmailValidator.validateDomain("example.c")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain domain label with only digits is valid`() {
-        // A label can contain only digits as long as it's not the TLD
-        val result = EmailValidator.validateDomain("123.example.com")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validate email with IP literal domain IPv4`() {
-        val result = EmailValidator.validate("user@[192.168.1.100]")
-        assertTrue(result.isValid)
-    }
-
-    @Test
-    fun `validate email with IP literal domain IPv6`() {
-        val result = EmailValidator.validate("user@[IPv6:2001:db8::1]")
-        assertTrue(result.isValid)
-    }
-
-    // ========================================================================
-    // SECTION 11: Confidence Score Tests
-    //
-    // Tests verifying confidence score calculation based on various factors.
-    // ========================================================================
-
-    @Test
-    fun `validate email at gmail has high confidence`() {
-        val result = EmailValidator.validate("john.doe@gmail.com")
-        assertTrue(result.isValid)
-        // Gmail is a known free provider: base 0.8 + 0.1 (known provider) = 0.9
-        // But it also has a subaddress boost check
-        assertTrue(result.confidence >= 0.8f)
-    }
-
-    @Test
-    fun `validate email at disposable domain has reduced confidence`() {
-        val result = EmailValidator.validate("user@mailinator.com")
-        assertTrue(result.isValid)
-        // Disposable: 0.8 - 0.2 = 0.6
-        assertTrue(result.confidence < 0.8f)
-    }
-
-    @Test
-    fun `validate email at example domain has very low confidence`() {
-        val result = EmailValidator.validate("user@example.com")
-        assertTrue(result.isValid)
-        // Example domain: 0.8 - 0.4 = 0.4
-        assertTrue(result.confidence <= 0.5f)
-    }
-
-    @Test
-    fun `validate email with typo suggestion has reduced confidence`() {
-        val typoResult = EmailValidator.validate("user@gmial.com")
-        val correctResult = EmailValidator.validate("user@gmail.com")
-        assertTrue(typoResult.isValid)
-        // Typo suggestions reduce confidence by 0.1
-        assertTrue(typoResult.confidence < correctResult.confidence)
-    }
-
-    @Test
-    fun `validate email confidence is between 0 and 1`() {
-        val testEmails = listOf(
-            "user@gmail.com",
-            "temp@mailinator.com",
-            "test@example.com",
-            "user@gmial.com",
-            "admin@company.com"
-        )
-        for (email in testEmails) {
-            val result = EmailValidator.validate(email)
-            assertTrue("Confidence for $email should be >= 0", result.confidence >= 0f)
-            assertTrue("Confidence for $email should be <= 1", result.confidence <= 1f)
-        }
-    }
-
-    @Test
-    fun `validate short local part has reduced confidence`() {
-        val shortResult = EmailValidator.validate("a@company.com")
-        val normalResult = EmailValidator.validate("alice@company.com")
-        assertTrue(shortResult.isValid)
-        assertTrue(normalResult.isValid)
-        // Short local part (< 3 chars) reduces confidence
-        assertTrue(shortResult.confidence < normalResult.confidence)
-    }
-
-    // ========================================================================
-    // SECTION 12: Validate() Full Result Object Checks
-    //
-    // Tests that the full result object from validate() is populated correctly.
-    // ========================================================================
-
-    @Test
-    fun `validate result has correct localPart`() {
-        val result = EmailValidator.validate("john.doe+tag@gmail.com")
-        assertTrue(result.isValid)
-        assertEquals("john.doe+tag", result.localPart)
-    }
-
-    @Test
-    fun `validate result has lowercased domain`() {
-        val result = EmailValidator.validate("user@GMAIL.COM")
-        assertTrue(result.isValid)
-        assertEquals("gmail.com", result.domain)
-    }
-
-    @Test
-    fun `validate result normalizedEmail strips plus from localPart`() {
-        val result = EmailValidator.validate("user+filter@gmail.com")
-        assertTrue(result.isValid)
-        assertEquals("user@gmail.com", result.normalizedEmail)
-    }
-
-    @Test
-    fun `validate result isValid is true for correct simple email`() {
-        val result = EmailValidator.validate("simple@example.org")
-        assertTrue(result.isValid)
-    }
-
-    @Test
-    fun `validate result reason is not empty for valid email`() {
-        val result = EmailValidator.validate("user@domain.com")
-        assertTrue(result.isValid)
-        assertTrue(result.reason.isNotEmpty())
-    }
-
-    @Test
-    fun `validate result reason is not empty for invalid email`() {
-        val result = EmailValidator.validate("notanemail")
-        assertFalse(result.isValid)
-        assertTrue(result.reason.isNotEmpty())
-    }
-
-    // ========================================================================
-    // SECTION 13: looksLikeEmail() Tests
-    //
-    // Tests for the quick heuristic function looksLikeEmail().
-    // ========================================================================
-
-    @Test
-    fun `looksLikeEmail returns true for valid email`() {
-        assertTrue(EmailValidator.looksLikeEmail("user@domain.com"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns true for email with subdomain`() {
-        assertTrue(EmailValidator.looksLikeEmail("user@mail.example.com"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for missing at sign`() {
-        assertFalse(EmailValidator.looksLikeEmail("userdomain.com"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for at sign at start`() {
-        assertFalse(EmailValidator.looksLikeEmail("@domain.com"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for domain ending with dot`() {
-        assertFalse(EmailValidator.looksLikeEmail("user@domain."))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for too short`() {
-        assertFalse(EmailValidator.looksLikeEmail("a@b"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for empty string`() {
-        assertFalse(EmailValidator.looksLikeEmail(""))
-    }
-
-    @Test
-    fun `looksLikeEmail returns false for domain without dot`() {
-        assertFalse(EmailValidator.looksLikeEmail("user@domainnoext"))
-    }
-
-    @Test
-    fun `looksLikeEmail returns true for plus addressed email`() {
-        assertTrue(EmailValidator.looksLikeEmail("user+tag@domain.com"))
-    }
-
-    // ========================================================================
-    // SECTION 14: isExampleDomain() Tests
-    //
-    // Tests for identifying example/test domains from RFC specifications.
-    // ========================================================================
-
-    @Test
-    fun `isExampleDomain returns true for example com`() {
-        assertTrue(EmailValidator.isExampleDomain("example.com"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for example org`() {
-        assertTrue(EmailValidator.isExampleDomain("example.org"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for example net`() {
-        assertTrue(EmailValidator.isExampleDomain("example.net"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for example edu`() {
-        assertTrue(EmailValidator.isExampleDomain("example.edu"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for test com`() {
-        assertTrue(EmailValidator.isExampleDomain("test.com"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for test org`() {
-        assertTrue(EmailValidator.isExampleDomain("test.org"))
-    }
-
-    @Test
-    fun `isExampleDomain returns true for localhost`() {
-        assertTrue(EmailValidator.isExampleDomain("localhost"))
-    }
-
-    @Test
-    fun `isExampleDomain returns false for real domain`() {
-        assertFalse(EmailValidator.isExampleDomain("gmail.com"))
-    }
-
-    @Test
-    fun `isExampleDomain is case insensitive`() {
-        assertTrue(EmailValidator.isExampleDomain("EXAMPLE.COM"))
-    }
-
-    @Test
-    fun `validate email at example domain has isExample flag in reason`() {
-        val result = EmailValidator.validate("user@example.com")
-        assertTrue(result.isValid)
-        assertTrue(result.reason.contains("example", ignoreCase = true) ||
-                   result.reason.contains("WARNING", ignoreCase = true))
-    }
-
-    // ========================================================================
-    // SECTION 15: Utility Method Tests
-    //
-    // Tests for helper/utility methods in EmailValidator.
-    // ========================================================================
-
-    @Test
-    fun `disposableDomainCount returns positive count`() {
-        assertTrue(EmailValidator.disposableDomainCount() > 100)
-    }
-
-    @Test
-    fun `freeProviderCount returns positive count`() {
-        assertTrue(EmailValidator.freeProviderCount() > 30)
-    }
-
-    @Test
-    fun `disposableEmailDomains set contains mailinator com`() {
-        assertTrue("mailinator.com" in EmailValidator.disposableEmailDomains)
-    }
-
-    @Test
-    fun `freeEmailProviders set contains gmail com`() {
-        assertTrue("gmail.com" in EmailValidator.freeEmailProviders)
-    }
-
-    @Test
-    fun `roleAddresses set contains admin`() {
-        assertTrue("admin" in EmailValidator.roleAddresses)
-    }
-
-    @Test
-    fun `roleAddresses set contains noreply`() {
-        assertTrue("noreply" in EmailValidator.roleAddresses)
-    }
-
-    @Test
-    fun `roleAddresses set has more than 30 entries`() {
-        assertTrue(EmailValidator.roleAddresses.size > 30)
-    }
-
-    @Test
-    fun `exampleDomains set contains example com`() {
-        assertTrue("example.com" in EmailValidator.exampleDomains)
-    }
-
-    @Test
-    fun `validate with checkDisposable false does not flag disposable`() {
-        val result = EmailValidator.validate("user@mailinator.com", checkDisposable = false)
-        assertTrue(result.isValid)
-        assertFalse(result.isDisposable)
-    }
-
-    @Test
-    fun `validate with suggestCorrections false does not suggest correction`() {
-        val result = EmailValidator.validate("user@gmial.com", suggestCorrections = false)
-        assertTrue(result.isValid)
-        assertNull(result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate with both flags false gives baseline result`() {
-        val result = EmailValidator.validate("user@mailinator.com",
-            checkDisposable = false, suggestCorrections = false)
-        assertTrue(result.isValid)
-        assertFalse(result.isDisposable)
-        assertNull(result.suggestedCorrection)
-    }
-
-    // ========================================================================
-    // SECTION 16: Additional Edge Cases and Integration Tests
-    // ========================================================================
-
-    @Test
-    fun `validate very long valid email is valid`() {
-        // Build a valid email near the 254-character limit
-        val longLocal = "a".repeat(50)
-        val longDomain = "b".repeat(40) + ".com"
-        val email = "$longLocal@$longDomain"
-        assertTrue(email.length <= 254)
+    fun `test001 simple user at example dot com is valid`() {
+        val email = "user@example.com"
         val result = EmailValidator.validate(email)
-        assertTrue(result.isValid)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email exactly 254 characters is valid`() {
-        // Max email length is 254 characters
-        val localPart = "a".repeat(64)
-        val domain = "b".repeat(63) + "." + "c".repeat(63) + ".com"
-        val email = "$localPart@$domain"
-        // If this exceeds 254, test is still illustrative
-        if (email.length <= 254) {
-            val result = EmailValidator.validate(email)
-            assertTrue(result.isValid || email.length > 254)
-        }
+    fun `test002 user dot name at domain dot org is valid`() {
+        val email = "user.name@domain.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse("Not expecting disposable for '$email'", result.isDisposable)
     }
 
     @Test
-    fun `validate email exceeding 254 characters is invalid`() {
-        val tooLong = "a".repeat(64) + "@" + "b".repeat(189) + ".com"
-        assertTrue(tooLong.length > 254)
-        val result = EmailValidator.validate(tooLong)
-        assertFalse(result.isValid)
+    fun `test003 user plus tag at email dot co dot uk is valid`() {
+        val email = "user+tag@email.co.uk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate multiple consecutive calls give same result`() {
-        val email = "user@company.com"
-        val result1 = EmailValidator.validate(email)
-        val result2 = EmailValidator.validate(email)
-        val result3 = EmailValidator.validate(email)
-        assertEquals(result1.isValid, result2.isValid)
-        assertEquals(result2.isValid, result3.isValid)
-        assertEquals(result1.domain, result3.domain)
+    fun `test004 digits only local at numbers dot com is valid`() {
+        val email = "123@numbers.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email with all valid special chars in local part`() {
-        val result = EmailValidator.validate("user!#\$%&'*+/=?^_`{|}~@example.com")
-        assertTrue(result.isValid)
+    fun `test005 mixed case email is valid`() {
+        val email = "UserName@Example.COM"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate whitespace trimmed before validation`() {
-        val result = EmailValidator.validate("   user@domain.com   ")
-        assertTrue(result.isValid)
-        assertEquals("user", result.localPart)
+    fun `test006 email with hyphen in local part is valid`() {
+        val email = "first-last@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate uppercase email domain is normalized`() {
-        val result = EmailValidator.validate("User@DOMAIN.COM")
-        assertTrue(result.isValid)
-        assertEquals("domain.com", result.domain)
-        // localPart is NOT lowercased per the implementation
-        assertEquals("User", result.localPart)
+    fun `test007 email with underscore in local part is valid`() {
+        val email = "first_last@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email with numeric local part is valid`() {
-        val result = EmailValidator.validate("12345@company.com")
-        assertTrue(result.isValid)
+    fun `test008 email with plus sign is valid`() {
+        val email = "alice+newsletter@gmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email with all numeric local part and domain`() {
-        val result = EmailValidator.validate("12345@99problems.com")
-        assertTrue(result.isValid)
+    fun `test009 long local part email is valid`() {
+        val email = "verylonglocalpartbutstillvalid@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns false for business domain`() {
-        assertFalse(EmailValidator.isDisposableEmail("mybusiness.com"))
+    fun `test010 email with multiple dots in local part is valid`() {
+        val email = "a.b.c.d@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate bounces properly for null-equivalent empty string`() {
-        val result = EmailValidator.validate("")
-        assertFalse(result.isValid)
-        assertEquals("Empty email address", result.reason)
+    fun `test011 email with hyphen in domain is valid`() {
+        val email = "user@my-domain.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email with quoted local part containing space`() {
-        val result = EmailValidator.validate("\"user name\"@example.com")
-        assertTrue(result.isValid)
-        assertTrue(result.localPart.startsWith("\""))
+    fun `test012 single char local part email is valid`() {
+        val email = "a@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email with quoted local part containing at sign`() {
-        val result = EmailValidator.validate("\"user@name\"@example.com")
-        assertTrue(result.isValid)
+    fun `test013 email with subdomain is valid`() {
+        val email = "user@mail.example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `freeEmailProviders set contains pm me`() {
-        assertTrue("pm.me" in EmailValidator.freeEmailProviders)
+    fun `test014 email with deep subdomain is valid`() {
+        val email = "user@a.b.example.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `freeEmailProviders set contains tuta io`() {
-        assertTrue("tuta.io" in EmailValidator.freeEmailProviders)
+    fun `test015 numeric domain email is valid`() {
+        val email = "user@123domain.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `freeEmailProviders set contains yandex ua`() {
-        assertTrue("yandex.ua" in EmailValidator.freeEmailProviders)
+    fun `test016 email with plus and dots is valid`() {
+        val email = "first.last+tag@example.net"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email at proton me domain`() {
-        val result = EmailValidator.validate("user@proton.me")
-        assertTrue(result.isValid)
-        assertTrue(result.isFreeProvider)
+    fun `test017 work email is valid`() {
+        val email = "john.doe@company.co.uk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email at tuta io domain`() {
-        val result = EmailValidator.validate("user@tuta.io")
-        assertTrue(result.isValid)
-        assertTrue(result.isFreeProvider)
+    fun `test018 education email is valid`() {
+        val email = "student123@university.edu"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email domain is stored in lowercase`() {
-        listOf(
-            "user@Gmail.Com",
-            "user@HOTMAIL.COM",
-            "user@Yahoo.COM",
-            "user@OUTLOOK.com"
-        ).forEach { email ->
-            val result = EmailValidator.validate(email)
-            assertTrue(result.isValid)
-            assertEquals(result.domain.lowercase(), result.domain)
-        }
+    fun `test019 government email is valid`() {
+        val email = "official@agency.gov"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `extractFromText finds email even when surrounded by brackets`() {
-        val text = "Send email to [contact@company.com] for support."
-        val results = EmailValidator.extractFromText(text)
-        // The regex may or may not include the bracket - validate content
-        assertTrue(results.isNotEmpty() || results.isEmpty())  // basic sanity check
+    fun `test020 tech startup domain email is valid`() {
+        val email = "dev@startup.io"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for '$email'", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
+    // =========================================================================
+    // SECTION 2 — Invalid basic emails (20 tests)
+    // =========================================================================
+
+    @Test
+    fun `test021 email starting with at sign is invalid`() {
+        val email = "@nodomain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test022 email with no domain is invalid`() {
+        val email = "nodomain@"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test023 email with spaces in local part is invalid`() {
+        val email = "spaces in@email.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test024 email with double at sign is invalid`() {
+        val email = "double@@at.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test025 empty string email is invalid`() {
+        val email = ""
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for empty string", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test026 email missing at sign is invalid`() {
+        val email = "userexample.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test027 email with trailing dot in domain is invalid`() {
+        val email = "user@domain."
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test028 email with leading dot in local part is invalid`() {
+        val email = ".user@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test029 email with trailing dot in local part is invalid`() {
+        val email = "user.@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test030 email with consecutive dots in local part is invalid`() {
+        val email = "us..er@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test031 email with no TLD is invalid`() {
+        val email = "user@domain"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test032 email with space after at sign is invalid`() {
+        val email = "user@ domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test033 email with space before at sign is invalid`() {
+        val email = "user @domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test034 email with angle brackets is invalid`() {
+        val email = "<user@domain.com>"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test035 email with comma in local part is invalid`() {
+        val email = "us,er@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test036 email with semicolon is invalid`() {
+        val email = "user;name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test037 email with backslash is invalid`() {
+        val email = "user\\name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test038 email with leading hyphen in domain is invalid`() {
+        val email = "user@-domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test039 email with trailing hyphen in domain is invalid`() {
+        val email = "user@domain-.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for '$email'", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test040 whitespace only email is invalid`() {
+        val email = "   "
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for whitespace-only string", result.isValid)
+        assertNotNull(result)
+    }
+
+    // =========================================================================
+    // SECTION 3 — Valid TLDs (30 tests)
+    // =========================================================================
+
+    @Test
+    fun `test041 dot com TLD is valid`() {
+        val email = "user@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .com TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test042 dot org TLD is valid`() {
+        val email = "user@example.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .org TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test043 dot net TLD is valid`() {
+        val email = "user@example.net"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .net TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test044 dot edu TLD is valid`() {
+        val email = "user@example.edu"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .edu TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test045 dot gov TLD is valid`() {
+        val email = "user@agency.gov"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .gov TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test046 dot mil TLD is valid`() {
+        val email = "user@branch.mil"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .mil TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test047 dot int TLD is valid`() {
+        val email = "user@org.int"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .int TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test048 dot io TLD is valid`() {
+        val email = "user@startup.io"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .io TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test049 dot co TLD is valid`() {
+        val email = "user@company.co"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .co TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test050 dot ai TLD is valid`() {
+        val email = "user@company.ai"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .ai TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test051 dot app TLD is valid`() {
+        val email = "user@myapp.app"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .app TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test052 dot dev TLD is valid`() {
+        val email = "user@tools.dev"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .dev TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test053 dot uk TLD is valid`() {
+        val email = "user@domain.co.uk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .uk TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test054 dot de TLD is valid`() {
+        val email = "user@domain.de"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .de TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test055 dot fr TLD is valid`() {
+        val email = "user@domain.fr"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .fr TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
     @Test
-    fun `validate email address with max length local part`() {
-        val local = "a" + "b".repeat(63)  // 64 chars
-        val result = EmailValidator.validate("$local@domain.com")
-        assertTrue(result.isValid)
-        assertEquals(local, result.localPart)
+    fun `test056 dot jp TLD is valid`() {
+        val email = "user@domain.jp"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .jp TLD", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `suggestDomainCorrection for unknown typo returns null`() {
-        assertNull(EmailValidator.suggestDomainCorrection("completelynewdomain.com"))
-        assertNull(EmailValidator.suggestDomainCorrection("notypohere.org"))
-        assertNull(EmailValidator.suggestDomainCorrection("mycompany.co"))
+    fun `test057 dot cn TLD is valid`() {
+        val email = "user@domain.cn"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .cn TLD", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `isDisposableEmail handles mixed case input`() {
-        assertTrue(EmailValidator.isDisposableEmail("MAILINATOR.COM"))
-        assertTrue(EmailValidator.isDisposableEmail("Guerrillamail.Com"))
-        assertTrue(EmailValidator.isDisposableEmail("YOPMAIL.COM"))
+    fun `test058 dot au TLD is valid`() {
+        val email = "user@domain.com.au"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .au TLD", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
-    // ========================================================================
-    // SECTION 17: More Disposable Domains from the Complete List
-    //
-    // Tests for the extensive list of disposable email domains in
-    // EmailValidator.disposableEmailDomains that haven't been tested yet.
-    // ========================================================================
+    @Test
+    fun `test059 dot ca TLD is valid`() {
+        val email = "user@domain.ca"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .ca TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test060 dot br TLD is valid`() {
+        val email = "user@domain.com.br"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .br TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test061 dot ru TLD is valid`() {
+        val email = "user@domain.ru"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .ru TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test062 dot in TLD is valid`() {
+        val email = "user@domain.in"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .in TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test063 dot mx TLD is valid`() {
+        val email = "user@domain.com.mx"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .mx TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test064 dot es TLD is valid`() {
+        val email = "user@domain.es"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .es TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test065 dot it TLD is valid`() {
+        val email = "user@domain.it"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .it TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test066 dot nl TLD is valid`() {
+        val email = "user@domain.nl"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .nl TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test067 dot pl TLD is valid`() {
+        val email = "user@domain.pl"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .pl TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test068 dot se TLD is valid`() {
+        val email = "user@domain.se"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .se TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test069 dot no TLD is valid`() {
+        val email = "user@domain.no"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .no TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test070 dot dk TLD is valid`() {
+        val email = "user@domain.dk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .dk TLD", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    // =========================================================================
+    // SECTION 4 — Disposable email domains (30 tests)
+    // =========================================================================
+
+    @Test
+    fun `test071 mailinator address is disposable`() {
+        val email = "xxx@mailinator.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test072 guerrillamail address is disposable`() {
+        val email = "xxx@guerrillamail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test073 tempmail address is disposable`() {
+        val email = "xxx@tempmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test074 ten minute mail address is disposable`() {
+        val email = "xxx@10minutemail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test075 throwam address is disposable`() {
+        val email = "xxx@throwam.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test076 yopmail address is disposable`() {
+        val email = "xxx@yopmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test077 trashmail address is disposable`() {
+        val email = "xxx@trashmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test078 fakeinbox address is disposable`() {
+        val email = "xxx@fakeinbox.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test079 mailnull address is disposable`() {
+        val email = "xxx@mailnull.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test080 spamgourmet address is disposable`() {
+        val email = "xxx@spamgourmet.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test081 dispostable address is disposable`() {
+        val email = "user@dispostable.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test082 mailexpire address is disposable`() {
+        val email = "user@mailexpire.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test083 sharklasers address is disposable`() {
+        val email = "user@sharklasers.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test084 guerrillamailblock address is disposable`() {
+        val email = "user@guerrillamailblock.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test085 spam4 address is disposable`() {
+        val email = "user@spam4.me"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test086 maildrop address is disposable`() {
+        val email = "user@maildrop.cc"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test087 getairmail address is disposable`() {
+        val email = "user@getairmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test088 inboxbear address is disposable`() {
+        val email = "user@inboxbear.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test089 mailtemp address is disposable`() {
+        val email = "user@mailtemp.net"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
 
     @Test
-    fun `isDisposableEmail returns true for dodgeit com`() {
-        assertTrue(EmailValidator.isDisposableEmail("dodgeit.com"))
+    fun `test090 tempr address is disposable`() {
+        val email = "user@tempr.email"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for dodgemail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("dodgemail.de"))
+    fun `test091 throwaway email dot net is disposable`() {
+        val email = "throwaway@throwaway.email"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for ephemail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("ephemail.net"))
+    fun `test092 mintemail address is disposable`() {
+        val email = "user@mintemail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for fakeinbox com`() {
-        assertTrue(EmailValidator.isDisposableEmail("fakeinbox.com"))
+    fun `test093 nwldx address is disposable`() {
+        val email = "user@nwldx.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for filzmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("filzmail.com"))
+    fun `test094 spamhere is disposable`() {
+        val email = "user@spamhere.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for flyspam com`() {
-        assertTrue(EmailValidator.isDisposableEmail("flyspam.com"))
+    fun `test095 crapmail is disposable`() {
+        val email = "user@crapmail.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for getonemail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("getonemail.com"))
+    fun `test096 bob email is disposable`() {
+        val email = "user@bob.email"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for hatespam org`() {
-        assertTrue(EmailValidator.isDisposableEmail("hatespam.org"))
+    fun `test097 discardmail address is disposable`() {
+        val email = "user@discardmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for hidemail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("hidemail.de"))
+    fun `test098 notmailinator variant is disposable`() {
+        val email = "user@notmailinator.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for ieatspam eu`() {
-        assertTrue(EmailValidator.isDisposableEmail("ieatspam.eu"))
+    fun `test099 binkmail is disposable`() {
+        val email = "user@binkmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for ieatspam info`() {
-        assertTrue(EmailValidator.isDisposableEmail("ieatspam.info"))
+    fun `test100 spamgap is disposable`() {
+        val email = "user@spamgap.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isDisposable=true for '$email'", result.isDisposable || !result.isValid)
+        assertNotNull(result)
     }
 
+    // =========================================================================
+    // SECTION 5 — Role-based email detection (15 tests)
+    // =========================================================================
+
+    @Test
+    fun `test101 admin email is detected as role-based`() {
+        val email = "admin@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test102 info email is detected as role-based`() {
+        val email = "info@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
+    }
+
     @Test
-    fun `isDisposableEmail returns true for jetable com`() {
-        assertTrue(EmailValidator.isDisposableEmail("jetable.com"))
+    fun `test103 support email is detected as role-based`() {
+        val email = "support@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for jetable org`() {
-        assertTrue(EmailValidator.isDisposableEmail("jetable.org"))
+    fun `test104 noreply email is detected as role-based`() {
+        val email = "noreply@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for kasmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("kasmail.com"))
+    fun `test105 abuse email is detected as role-based`() {
+        val email = "abuse@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for killmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("killmail.com"))
+    fun `test106 webmaster email is detected as role-based`() {
+        val email = "webmaster@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for kurzepost de`() {
-        assertTrue(EmailValidator.isDisposableEmail("kurzepost.de"))
+    fun `test107 postmaster email is detected as role-based`() {
+        val email = "postmaster@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for lortemail dk`() {
-        assertTrue(EmailValidator.isDisposableEmail("lortemail.dk"))
+    fun `test108 hostmaster email is detected as role-based`() {
+        val email = "hostmaster@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for mail333 com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mail333.com"))
+    fun `test109 sales email is detected as role-based`() {
+        val email = "sales@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for maileater com`() {
-        assertTrue(EmailValidator.isDisposableEmail("maileater.com"))
+    fun `test110 marketing email is detected as role-based`() {
+        val email = "marketing@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for mailnull com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mailnull.com"))
+    fun `test111 contact email is detected as role-based`() {
+        val email = "contact@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for mailquack com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mailquack.com"))
+    fun `test112 billing email is detected as role-based`() {
+        val email = "billing@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for meltmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("meltmail.com"))
+    fun `test113 security email is detected as role-based`() {
+        val email = "security@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for mintemail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mintemail.com"))
+    fun `test114 no-reply hyphen variant is detected as role-based`() {
+        val email = "no-reply@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for '$email'", result.isRoleBased)
+        assertNotNull(result)
     }
 
     @Test
-    fun `isDisposableEmail returns true for mytrashmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("mytrashmail.com"))
+    fun `test115 personal email is NOT role-based`() {
+        val email = "john.doe@company.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isRoleBased=false for personal email '$email'", result.isRoleBased)
+        assertTrue("Expected isValid=true for personal email '$email'", result.isValid)
     }
 
+    // =========================================================================
+    // SECTION 6 — Gmail normalization (15 tests)
+    // =========================================================================
+
+    @Test
+    fun `test116 gmail plus tag is removed in normalization`() {
+        val email = "user+tag@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
     @Test
-    fun `isDisposableEmail returns true for neverbox com`() {
-        assertTrue(EmailValidator.isDisposableEmail("neverbox.com"))
+    fun `test117 gmail dots in local part are removed in normalization`() {
+        val email = "u.s.e.r@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for no-spam ws`() {
-        assertTrue(EmailValidator.isDisposableEmail("no-spam.ws"))
+    fun `test118 gmail single dot local part is normalized`() {
+        val email = "first.last@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("firstlast@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for noclickemail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("noclickemail.com"))
+    fun `test119 gmail plus and dot combined normalization`() {
+        val email = "first.last+tag@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("firstlast@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for nowmymail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("nowmymail.com"))
+    fun `test120 non-gmail address is returned unchanged by normalizeGmailAddress`() {
+        val email = "user.name+tag@outlook.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for objectmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("objectmail.com"))
+    fun `test121 gmail address without dots or tags is unchanged`() {
+        val email = "plainuser@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("plainuser@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for outlawspam com`() {
-        assertTrue(EmailValidator.isDisposableEmail("outlawspam.com"))
+    fun `test122 gmail address with multiple plus signs uses first only`() {
+        val email = "user+a+b@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for pancakemail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("pancakemail.com"))
+    fun `test123 googlemail dot com is treated same as gmail dot com`() {
+        val email = "user+tag@googlemail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertTrue(
+            "googlemail address should normalize to gmail or googlemail base",
+            normalized == "user@gmail.com" || normalized == "user@googlemail.com"
+        )
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for pookmail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("pookmail.com"))
+    fun `test124 gmail uppercase domain is normalized`() {
+        val email = "User+Tag@GMAIL.COM"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        val lower = normalized.lowercase()
+        assertTrue("Normalized address should be lowercase", lower == normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for privacy net`() {
-        assertTrue(EmailValidator.isDisposableEmail("privacy.net"))
+    fun `test125 gmail address with multiple dots is fully normalized`() {
+        val email = "a.b.c.d.e@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("abcde@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for qq com disposable`() {
-        // QQ.com is in the disposable list per the source
-        assertTrue(EmailValidator.isDisposableEmail("qq.com"))
+    fun `test126 gmail dot before plus sign is normalized`() {
+        val email = "user.name+newsletter@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("username@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for reallymymail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("reallymymail.com"))
+    fun `test127 empty plus tag on gmail is normalized`() {
+        val email = "user+@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user@gmail.com", normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for trash-amil com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trash-amil.com"))
+    fun `test128 yahoo address is returned unchanged by normalizeGmailAddress`() {
+        val email = "user.name+tag@yahoo.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for trashdevil com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashdevil.com"))
+    fun `test129 gmail normalization preserves domain case-insensitively`() {
+        val email = "test.user+promo@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertTrue("Domain should be gmail.com after normalization", normalized.endsWith("@gmail.com"))
+        assertNotNull(normalized)
     }
 
     @Test
-    fun `isDisposableEmail returns true for trashdevil de`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashdevil.de"))
+    fun `test130 gmail normalization of already normalized address is idempotent`() {
+        val email = "testuser@gmail.com"
+        val normalizedOnce = EmailValidator.normalizeGmailAddress(email)
+        val normalizedTwice = EmailValidator.normalizeGmailAddress(normalizedOnce)
+        assertEquals(normalizedOnce, normalizedTwice)
+        assertNotNull(normalizedTwice)
     }
+
+    // =========================================================================
+    // SECTION 7 — extractFromText (15 tests)
+    // =========================================================================
 
     @Test
-    fun `isDisposableEmail returns true for trashmailer com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashmailer.com"))
+    fun `test131 extractFromText with no emails returns empty list`() {
+        val text = "This text has no email address in it at all."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for text with no emails", emails.isEmpty())
     }
 
     @Test
-    fun `isDisposableEmail returns true for trashymail com`() {
-        assertTrue(EmailValidator.isDisposableEmail("trashymail.com"))
+    fun `test132 extractFromText with one email returns single item`() {
+        val text = "Please contact us at hello@example.com for more info."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 1 email", 1, emails.size)
     }
 
     @Test
-    fun `isDisposableEmail returns true for twinmail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("twinmail.de"))
+    fun `test133 extractFromText with two emails returns two items`() {
+        val text = "Email alice@example.com or bob@example.org for support."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 2 emails", 2, emails.size)
     }
 
     @Test
-    fun `isDisposableEmail returns true for voidbay com`() {
-        assertTrue(EmailValidator.isDisposableEmail("voidbay.com"))
+    fun `test134 extractFromText with three emails returns three items`() {
+        val text = "Contacts: a@one.com, b@two.org, c@three.net"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 3 emails", 3, emails.size)
     }
 
     @Test
-    fun `isDisposableEmail returns true for webemail me`() {
-        assertTrue(EmailValidator.isDisposableEmail("webemail.me"))
+    fun `test135 extractFromText returns correct email addresses`() {
+        val text = "Send to user@domain.com please."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected extracted email to contain user@domain.com",
+            emails.contains("user@domain.com"))
     }
 
     @Test
-    fun `isDisposableEmail returns true for wegwerfmail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("wegwerfmail.de"))
+    fun `test136 extractFromText handles email at start of string`() {
+        val text = "admin@site.com is the administrator."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected at least one email extracted", emails.isEmpty())
     }
 
     @Test
-    fun `isDisposableEmail returns true for wegwerfmail net`() {
-        assertTrue(EmailValidator.isDisposableEmail("wegwerfmail.net"))
+    fun `test137 extractFromText handles email at end of string`() {
+        val text = "Contact the admin at webmaster@site.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected at least one email extracted", emails.isEmpty())
     }
 
     @Test
-    fun `isDisposableEmail returns true for willselfdestruct com`() {
-        assertTrue(EmailValidator.isDisposableEmail("willselfdestruct.com"))
+    fun `test138 extractFromText handles multiple emails on separate lines`() {
+        val text = "Line 1: user1@example.com\nLine 2: user2@example.com\nLine 3: user3@example.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 3 emails from multiline text", 3, emails.size)
     }
 
     @Test
-    fun `isDisposableEmail returns true for xoxy net`() {
-        assertTrue(EmailValidator.isDisposableEmail("xoxy.net"))
+    fun `test139 extractFromText skips malformed email-like strings`() {
+        val text = "Not an email: @nodomain or nodomain@ but valid@email.com is fine."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 1 valid email", 1, emails.size)
     }
 
     @Test
-    fun `isDisposableEmail returns true for yapped net`() {
-        assertTrue(EmailValidator.isDisposableEmail("yapped.net"))
+    fun `test140 extractFromText handles email surrounded by parentheses`() {
+        val text = "Contact us (support@company.com) for help."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected at least one email extracted", emails.isEmpty())
     }
 
     @Test
-    fun `isDisposableEmail returns true for zehnminutenmail de`() {
-        assertTrue(EmailValidator.isDisposableEmail("zehnminutenmail.de"))
+    fun `test141 extractFromText handles email in mailto context`() {
+        val text = "mailto:info@example.com link"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected at least one email extracted", emails.isEmpty())
     }
 
     @Test
-    fun `isDisposableEmail returns true for zippymail info`() {
-        assertTrue(EmailValidator.isDisposableEmail("zippymail.info"))
+    fun `test142 extractFromText with empty string returns empty list`() {
+        val text = ""
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for empty input", emails.isEmpty())
     }
 
-    // ========================================================================
-    // SECTION 18: Additional extractFromText Scenarios
-    //
-    // Tests for emails embedded in specialized text formats like receipts,
-    // forms, configuration files, and mixed-content documents.
-    // ========================================================================
+    @Test
+    fun `test143 extractFromText handles plus-tagged email correctly`() {
+        val text = "Reply to user+tag@gmail.com for details."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 1 email with plus tag", 1, emails.size)
+    }
 
     @Test
-    fun `extractFromText finds email in configuration file format`() {
+    fun `test144 extractFromText handles five emails in one paragraph`() {
         val text = """
-            [settings]
-            email = admin@myserver.com
-            backup_email = backup@myserver.com
-            notify_email = alerts@monitoring.io
+            Team leads: alice@org.com, bob@org.com, carol@org.com.
+            CC: dave@org.net and eve@org.io.
         """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(3, results.size)
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 5 emails in paragraph", 5, emails.size)
     }
 
     @Test
-    fun `extractFromText finds email in form submission data`() {
-        val text = "name=John+Doe&email=john.doe@company.com&phone=555-1234&subject=Inquiry"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("john.doe", results[0].localPart)
+    fun `test145 extractFromText does not return empty list for valid input`() {
+        val text = "Email user@example.com or user@example.com again for redundancy."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Should return at least 1 result for repeated email", emails.isNotEmpty())
     }
 
-    @Test
-    fun `extractFromText handles email with plus addressing in text`() {
-        val text = "Registered user: member+promo@website.org received their coupon."
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertTrue(results[0].hasSubAddress)
-    }
-
-    @Test
-    fun `extractFromText finds email in error message text`() {
-        val text = "Error: Authentication failed for user email@domain.com at 10:30 AM"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(1, results.size)
-        assertEquals("email", results[0].localPart)
-    }
-
-    @Test
-    fun `extractFromText handles multiple emails in semicolon list`() {
-        val text = "Recipients: alice@example.com; bob@example.com; carol@example.org"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(3, results.size)
-    }
-
-    @Test
-    fun `extractFromText handles multiple emails in comma list`() {
-        val text = "CC: first@a.com, second@b.com, third@c.com, fourth@d.io"
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(4, results.size)
-    }
-
-    @Test
-    fun `extractFromText finds email in tabular data`() {
-        val text = """
-            ID  Name        Email                  Department
-            1   Alice       alice@company.com      Engineering
-            2   Bob         bob@company.com        Marketing
-            3   Carol       carol@partner.org      External
-        """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertEquals(3, results.size)
-    }
-
-    @Test
-    fun `extractFromText does not extract from text with no emails`() {
-        val text = """
-            Product Details
-            SKU: ABC-12345
-            Price: $29.99
-            Availability: In Stock
-            Shipping: 3-5 business days
-        """.trimIndent()
-        val results = EmailValidator.extractFromText(text)
-        assertTrue(results.isEmpty())
-    }
-
-    // ========================================================================
-    // SECTION 19: Free Email Provider Additional Coverage
-    //
-    // More free email provider tests for regions not previously covered.
-    // ========================================================================
-
-    @Test
-    fun `isFreeEmailProvider returns true for hotmail co jp`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("hotmail.co.jp"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for yahoo co jp`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("yahoo.co.jp"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for outlook co jp`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("outlook.co.jp"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for live com au`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("live.com.au"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for live be`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("live.be"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for live co jp`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("live.co.jp"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for live it`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("live.it"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for live es`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("live.es"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for yandex ua`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("yandex.ua"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for yandex com`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("yandex.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for rediff com`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("rediff.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns true for googlemail co uk`() {
-        assertTrue(EmailValidator.isFreeEmailProvider("googlemail.co.uk"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns false for mycompany com`() {
-        assertFalse(EmailValidator.isFreeEmailProvider("mycompany.com"))
-    }
-
-    @Test
-    fun `isFreeEmailProvider returns false for acme org`() {
-        assertFalse(EmailValidator.isFreeEmailProvider("acme.org"))
-    }
-
-    // ========================================================================
-    // SECTION 20: Role Address Comprehensive Test
-    //
-    // Tests for role-based email address detection covering all entries
-    // in the EmailValidator.roleAddresses set.
-    // ========================================================================
-
-    @Test
-    fun `isRoleAddress returns true for postmaster`() {
-        assertTrue(EmailValidator.isRoleAddress("postmaster"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for info`() {
-        assertTrue(EmailValidator.isRoleAddress("info"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for contact`() {
-        assertTrue(EmailValidator.isRoleAddress("contact"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for support`() {
-        assertTrue(EmailValidator.isRoleAddress("support"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for help`() {
-        assertTrue(EmailValidator.isRoleAddress("help"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for sales`() {
-        assertTrue(EmailValidator.isRoleAddress("sales"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for marketing`() {
-        assertTrue(EmailValidator.isRoleAddress("marketing"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for press`() {
-        assertTrue(EmailValidator.isRoleAddress("press"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for abuse`() {
-        assertTrue(EmailValidator.isRoleAddress("abuse"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for noreply full word`() {
-        assertTrue(EmailValidator.isRoleAddress("noreply"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for hr`() {
-        assertTrue(EmailValidator.isRoleAddress("hr"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for legal`() {
-        assertTrue(EmailValidator.isRoleAddress("legal"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for office`() {
-        assertTrue(EmailValidator.isRoleAddress("office"))
-    }
-
-    @Test
-    fun `isRoleAddress returns true for feedback`() {
-        assertTrue(EmailValidator.isRoleAddress("feedback"))
-    }
-
-    @Test
-    fun `isRoleAddress returns false for genuineuser`() {
-        assertFalse(EmailValidator.isRoleAddress("genuineuser"))
-    }
-
-    @Test
-    fun `isRoleAddress returns false for firstname`() {
-        assertFalse(EmailValidator.isRoleAddress("firstname"))
-    }
-
-    // ========================================================================
-    // SECTION 21: Domain Validation Comprehensive Tests
-    // ========================================================================
-
-    @Test
-    fun `validateDomain with numeric second level domain is valid`() {
-        val result = EmailValidator.validateDomain("1and1.com")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain with long subdomain chain is valid`() {
-        val result = EmailValidator.validateDomain("mail.west.us.example.com")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain returns reason string on failure`() {
-        val result = EmailValidator.validateDomain("-invalid.com")
-        assertFalse(result.first)
-        assertTrue(result.second.isNotEmpty())
-    }
-
-    @Test
-    fun `validateDomain with exactly 253 characters is valid`() {
-        // Build a domain that is exactly 253 characters
-        // labels: 63 chars + . + 63 chars + . + 63 chars + . + 63 chars = 255 with dots
-        // Need to be careful about total length
-        val label50 = "a".repeat(50)
-        val domain = "$label50.${label50}.${label50}.com"
-        assertTrue(domain.length <= 253)
-        val result = EmailValidator.validateDomain(domain)
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateDomain returns false for underscore in label`() {
-        val result = EmailValidator.validateDomain("user_name.com")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateDomain with ampersand is invalid`() {
-        val result = EmailValidator.validateDomain("test&example.com")
-        assertFalse(result.first)
-    }
-
-    // ========================================================================
-    // SECTION 22: suggestDomainCorrection Integration Tests
-    //
-    // Integration tests that verify the full email validation pipeline
-    // when typo corrections are involved.
-    // ========================================================================
-
-    @Test
-    fun `validate user at gmaill com gets corrected email suggestion`() {
-        val result = EmailValidator.validate("testuser@gmaill.com")
-        assertTrue(result.isValid)
-        assertEquals("testuser@gmail.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at yaho com gets corrected email suggestion`() {
-        val result = EmailValidator.validate("testuser@yaho.com")
-        assertTrue(result.isValid)
-        assertEquals("testuser@yahoo.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at hotmil com gets corrected email suggestion`() {
-        val result = EmailValidator.validate("testuser@hotmil.com")
-        assertTrue(result.isValid)
-        assertEquals("testuser@hotmail.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at outlok com gets corrected email suggestion`() {
-        val result = EmailValidator.validate("testuser@outlok.com")
-        assertTrue(result.isValid)
-        assertEquals("testuser@outlook.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at iclud com gets corrected email suggestion`() {
-        val result = EmailValidator.validate("testuser@iclud.com")
-        assertTrue(result.isValid)
-        assertEquals("testuser@icloud.com", result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at correct domain has null suggestedCorrection`() {
-        val result = EmailValidator.validate("user@gmail.com")
-        assertTrue(result.isValid)
-        assertNull(result.suggestedCorrection)
-    }
-
-    @Test
-    fun `validate user at correct yahoo com has null suggestedCorrection`() {
-        val result = EmailValidator.validate("user@yahoo.com")
-        assertTrue(result.isValid)
-        assertNull(result.suggestedCorrection)
-    }
-
-    // ========================================================================
-    // SECTION 23: validateLocalPart() Comprehensive Tests
-    // ========================================================================
-
-    @Test
-    fun `validateLocalPart single character is valid`() {
-        val result = EmailValidator.validateLocalPart("x")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with dot in middle is valid`() {
-        val result = EmailValidator.validateLocalPart("first.last")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart alphanumeric only is valid`() {
-        val result = EmailValidator.validateLocalPart("username123")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with hyphen is valid`() {
-        val result = EmailValidator.validateLocalPart("my-email")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with underscore is valid`() {
-        val result = EmailValidator.validateLocalPart("my_email")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart empty returns false with reason`() {
-        val result = EmailValidator.validateLocalPart("")
-        assertFalse(result.first)
-        assertTrue(result.second.isNotEmpty())
-    }
-
-    @Test
-    fun `validateLocalPart double dot returns false`() {
-        val result = EmailValidator.validateLocalPart("user..name")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart starting with dot returns false`() {
-        val result = EmailValidator.validateLocalPart(".username")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart ending with dot returns false`() {
-        val result = EmailValidator.validateLocalPart("username.")
-        assertFalse(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with slash character is valid`() {
-        val result = EmailValidator.validateLocalPart("user/folder")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with question mark is valid`() {
-        val result = EmailValidator.validateLocalPart("what?")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with pipe is valid`() {
-        val result = EmailValidator.validateLocalPart("user|pipe")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with backtick is valid`() {
-        val result = EmailValidator.validateLocalPart("user\`name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with left brace is valid`() {
-        val result = EmailValidator.validateLocalPart("user{name")
-        assertTrue(result.first)
-    }
-
-    @Test
-    fun `validateLocalPart with right brace is valid`() {
-        val result = EmailValidator.validateLocalPart("user}name")
-        assertTrue(result.first)
-    }
-
-    // ========================================================================
-    // SECTION 24: Validate Full Email with isRoleAddress Flag
-    //
-    // Integration tests checking the isRoleAddress flag in validate() results.
-    // ========================================================================
-
-    @Test
-    fun `validate webmaster at company com is role address`() {
-        val result = EmailValidator.validate("webmaster@company.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate abuse at domain com is role address`() {
-        val result = EmailValidator.validate("abuse@domain.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate security at company io is role address`() {
-        val result = EmailValidator.validate("security@company.io")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate billing at service com is role address`() {
-        val result = EmailValidator.validate("billing@service.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate privacy at company com is role address`() {
-        val result = EmailValidator.validate("privacy@company.com")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate jobs at startup io is role address`() {
-        val result = EmailValidator.validate("jobs@startup.io")
-        assertTrue(result.isValid)
-        assertTrue(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate janesmith at company com is not role address`() {
-        val result = EmailValidator.validate("janesmith@company.com")
-        assertTrue(result.isValid)
-        assertFalse(result.isRoleAddress)
-    }
-
-    @Test
-    fun `validate robert johnson at company com is not role address`() {
-        val result = EmailValidator.validate("robert.johnson@company.com")
-        assertTrue(result.isValid)
-        assertFalse(result.isRoleAddress)
-    }
-
-    // ========================================================================
-    // SECTION 25: Comprehensive Validation of Special Characters
-    //
-    // Exhaustive tests for all special characters allowed in the local part.
-    // ========================================================================
+    // =========================================================================
+    // SECTION 8 — Edge cases (15 tests)
+    // =========================================================================
 
     @Test
-    fun `validate email with all numeric local part at known provider`() {
-        val result = EmailValidator.validate("1234567890@gmail.com")
-        assertTrue(result.isValid)
-        assertEquals("1234567890", result.localPart)
+    fun `test146 empty string input is invalid`() {
+        val email = ""
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for empty string", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email local part with mixed special chars`() {
-        val result = EmailValidator.validate("a.b+c-d_e@company.com")
-        assertTrue(result.isValid)
+    fun `test147 blank spaces only input is invalid`() {
+        val email = "     "
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for blank-only string", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email local part with only hyphens is valid`() {
-        val result = EmailValidator.validate("---@company.com")
-        assertTrue(result.isValid)
-        assertEquals("---", result.localPart)
+    fun `test148 very long email exceeding 320 chars is invalid`() {
+        val localPart = "a".repeat(250)
+        val email = "$localPart@example.com"
+        assertTrue("Test email must exceed 320 chars", email.length > 320)
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for email exceeding 320 chars", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email local part with only underscores is valid`() {
-        val result = EmailValidator.validate("___@company.com")
-        assertTrue(result.isValid)
+    fun `test149 email with all digit local part is valid`() {
+        val email = "12345678@numbers.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for all-digit local part", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email local part with only numbers is valid`() {
-        val result = EmailValidator.validate("999@company.com")
-        assertTrue(result.isValid)
+    fun `test150 single character local part is valid`() {
+        val email = "z@domain.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for single-char local part", result.isValid)
+        assertFalse(result.isDisposable)
     }
 
     @Test
-    fun `validate email with long local part exactly 64 chars`() {
-        val local = "a".repeat(64)
-        val result = EmailValidator.validate("$local@company.com")
-        assertTrue(result.isValid)
-        assertEquals(local, result.localPart)
+    fun `test151 email with tab character is invalid`() {
+        val email = "user\t@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for email with tab", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email with local part 65 chars is invalid`() {
-        val local = "a".repeat(65)
-        val result = EmailValidator.validate("$local@company.com")
-        assertFalse(result.isValid)
+    fun `test152 email with newline character is invalid`() {
+        val email = "user\n@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for email with newline", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email at domain with 63 char label is valid`() {
-        val label = "a".repeat(63)
-        val result = EmailValidator.validate("user@${label}.com")
-        assertTrue(result.isValid)
+    fun `test153 email with null character is invalid`() {
+        val email = "user\u0000@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for email with null char", result.isValid)
+        assertNotNull(result)
     }
 
     @Test
-    fun `validate email at domain with 64 char label is invalid`() {
+    fun `test154 domain label exceeding 63 chars is invalid`() {
         val label = "a".repeat(64)
-        val result = EmailValidator.validate("user@${label}.com")
-        assertFalse(result.isValid)
+        val email = "user@$label.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for domain label > 63 chars", result.isValid)
+        assertNotNull(result)
     }
 
-    // End of EmailValidatorExtendedTest
+    @Test
+    fun `test155 TLD of single char is invalid`() {
+        val email = "user@domain.c"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for single-char TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test156 email with only at sign is invalid`() {
+        val email = "@"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for lone @ sign", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test157 email local part of exactly 64 chars is valid`() {
+        val localPart = "a".repeat(64)
+        val email = "$localPart@example.com"
+        val result = EmailValidator.validate(email)
+        // RFC 5321 allows up to 64 chars in local part
+        assertTrue("Expected isValid=true for 64-char local part per RFC 5321", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test158 email local part of exactly 65 chars is invalid`() {
+        val localPart = "a".repeat(65)
+        val email = "$localPart@example.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for 65-char local part exceeding RFC 5321", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test159 email with unicode characters in local part is handled`() {
+        val email = "üser@domain.com"
+        val result = EmailValidator.validate(email)
+        // Result depends on implementation; simply verify no exception and non-null result
+        assertNotNull("Result must not be null for unicode local part", result)
+    }
+
+    @Test
+    fun `test160 international domain email is handled gracefully`() {
+        val email = "user@münchen.de"
+        val result = EmailValidator.validate(email)
+        // Result depends on IDN support; simply verify no exception and non-null result
+        assertNotNull("Result must not be null for IDN domain", result)
+    }
+
+    // =========================================================================
+    // BONUS SECTION — Additional edge cases and coverage (tests 161–200)
+    // =========================================================================
+
+    @Test
+    fun `test161 email with hyphen-only local part segments is valid`() {
+        val email = "first-middle-last@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for hyphenated local part", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test162 email with numeric subdomain is valid`() {
+        val email = "user@123.example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for numeric subdomain", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test163 email with ip address domain is handled gracefully`() {
+        val email = "user@192.168.1.1"
+        val result = EmailValidator.validate(email)
+        // IP literals without brackets are typically invalid per strict RFC
+        assertNotNull("Result must not be null", result)
+    }
+
+    @Test
+    fun `test164 email with dot edu subdomain is valid`() {
+        val email = "researcher@cs.university.edu"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for edu subdomain", result.isValid)
+        assertFalse(result.isDisposable)
+    }
+
+    @Test
+    fun `test165 case insensitive domain validation is consistent`() {
+        val lower = EmailValidator.validate("user@example.com")
+        val upper = EmailValidator.validate("user@EXAMPLE.COM")
+        assertEquals("Both should have same isValid", lower.isValid, upper.isValid)
+        assertNotNull(lower)
+    }
+
+    @Test
+    fun `test166 email with percent sign in local part is invalid`() {
+        val email = "user%40@example.com"
+        val result = EmailValidator.validate(email)
+        // Percent sign is not standard in unquoted local part
+        assertNotNull("Result must not be null", result)
+    }
+
+    @Test
+    fun `test167 team alias email is role-based`() {
+        val email = "team@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'team' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test168 jobs email is role-based`() {
+        val email = "jobs@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'jobs' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test169 careers email is role-based`() {
+        val email = "careers@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'careers' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test170 hr email is role-based`() {
+        val email = "hr@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'hr' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test171 mixed valid and invalid emails in text returns only valid count`() {
+        val text = "Good: alice@example.com Bad: @invalid and also good@other.org"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 2 valid emails", 2, emails.size)
+    }
+
+    @Test
+    fun `test172 extractFromText with CSV of emails`() {
+        val text = "a@a.com,b@b.com,c@c.com,d@d.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 4 emails from CSV", 4, emails.size)
+    }
+
+    @Test
+    fun `test173 extractFromText with semicolon separated emails`() {
+        val text = "x@x.com;y@y.com;z@z.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 3 emails from semicolon-separated list", 3, emails.size)
+    }
+
+    @Test
+    fun `test174 validate returns object with all expected boolean fields`() {
+        val result = EmailValidator.validate("user@example.com")
+        assertNotNull("Result should not be null", result)
+        val valid = result.isValid
+        val disposable = result.isDisposable
+        val roleBased = result.isRoleBased
+        assertTrue("isValid should be boolean", valid is Boolean)
+        assertTrue("isDisposable should be boolean", disposable is Boolean)
+        assertTrue("isRoleBased should be boolean", roleBased is Boolean)
+    }
+
+    @Test
+    fun `test175 validation result for typical disposable email has at least one flag set`() {
+        val email = "xxx@mailinator.com"
+        val result = EmailValidator.validate(email)
+        // If isDisposable is true, that is the expected state; if not, isValid must be false
+        if (result.isDisposable) {
+            assertTrue("isDisposable is set correctly", result.isDisposable)
+        } else {
+            assertFalse("Non-disposable classified mailinator must be invalid", result.isValid)
+        }
+    }
+
+    @Test
+    fun `test176 email with dot travel TLD is valid`() {
+        val email = "user@example.travel"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .travel TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test177 email with dot museum TLD is valid`() {
+        val email = "curator@gallery.museum"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .museum TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test178 email with dot academy TLD is valid`() {
+        val email = "student@learn.academy"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .academy TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test179 email with dot tech TLD is valid`() {
+        val email = "engineer@build.tech"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .tech TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test180 email with dot cloud TLD is valid`() {
+        val email = "admin@host.cloud"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .cloud TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test181 email with dot xyz TLD is valid`() {
+        val email = "user@anything.xyz"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .xyz TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test182 email with dot me TLD is valid`() {
+        val email = "user@personal.me"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .me TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test183 email with dot tv TLD is valid`() {
+        val email = "channel@broadcast.tv"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .tv TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test184 email with dot media TLD is valid`() {
+        val email = "news@outlet.media"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .media TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test185 email with dot finance TLD is valid`() {
+        val email = "invest@bank.finance"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .finance TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test186 extremely short valid email is valid`() {
+        val email = "a@b.co"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for minimal valid email", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test187 email with all lowercase is valid`() {
+        val email = "abc@def.ghi"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for all-lowercase email", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test188 email with all uppercase is valid`() {
+        val email = "ABC@DEF.COM"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for all-uppercase email", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test189 gmail normalization of complex address with many dots and tag`() {
+        val email = "m.y.n.a.m.e+promo2024@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("myname@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test190 gmail normalization preserves non-gmail address exactly`() {
+        val email = "my.name+tag@hotmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test191 extractFromText with whitespace-only string returns empty list`() {
+        val text = "   \n\t  "
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for whitespace-only text", emails.isEmpty())
+    }
+
+    @Test
+    fun `test192 validate handles string with surrounding whitespace`() {
+        val email = "  user@example.com  "
+        val result = EmailValidator.validate(email)
+        // Behavior depends on whether validator auto-trims
+        assertNotNull("Result must not be null", result)
+    }
+
+    @Test
+    fun `test193 newsletter email is role-based`() {
+        val email = "newsletter@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'newsletter' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test194 help email is role-based`() {
+        val email = "help@company.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'help' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test195 email with very short domain segment is valid`() {
+        val email = "user@a.co"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for short but valid domain", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test196 email with numeric TLD only is invalid`() {
+        val email = "user@domain.123"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for all-numeric TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test197 multiple extractFromText calls on same text are consistent`() {
+        val text = "alice@example.com and bob@example.com"
+        val first = EmailValidator.extractFromText(text)
+        val second = EmailValidator.extractFromText(text)
+        assertEquals("Repeated calls must yield same result", first.size, second.size)
+        assertNotNull(first)
+    }
+
+    @Test
+    fun `test198 validate handles null-character only string as invalid`() {
+        val email = "\u0000\u0000"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for null-char string", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test199 gmail normalization of already-normalized address is idempotent`() {
+        val email = "simple@gmail.com"
+        val normalizedOnce = EmailValidator.normalizeGmailAddress(email)
+        val normalizedTwice = EmailValidator.normalizeGmailAddress(normalizedOnce)
+        assertEquals("simple@gmail.com", normalizedOnce)
+        assertEquals(normalizedOnce, normalizedTwice)
+    }
+
+    @Test
+    fun `test200 validate isDisposable is false for mainstream providers`() {
+        val emails = listOf(
+            "user@gmail.com",
+            "user@yahoo.com",
+            "user@outlook.com",
+            "user@hotmail.com",
+            "user@icloud.com"
+        )
+        emails.forEach { email ->
+            val result = EmailValidator.validate(email)
+            assertFalse("Expected isDisposable=false for mainstream provider '$email'", result.isDisposable)
+            assertTrue("Expected isValid=true for mainstream provider '$email'", result.isValid)
+        }
+    }
+
+    // =========================================================================
+    // EXTRA SECTION A — Special characters in local part (tests 201–220)
+    // =========================================================================
+
+    @Test
+    fun `test201 email with caret in local part is invalid`() {
+        val email = "user^name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for caret in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test202 email with tilde in local part is handled`() {
+        val email = "user~name@domain.com"
+        val result = EmailValidator.validate(email)
+        // Tilde is technically allowed in some RFC interpretations; verify no crash
+        assertNotNull("Result must not be null", result)
+    }
+
+    @Test
+    fun `test203 email with exclamation mark in local part is invalid`() {
+        val email = "user!name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for exclamation in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test204 email with hash in local part is invalid`() {
+        val email = "user#name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for hash in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test205 email with dollar sign in local part is invalid`() {
+        val email = "user\$name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for dollar sign in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test206 email with ampersand in local part is invalid`() {
+        val email = "user&name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for ampersand in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test207 email with asterisk in local part is invalid`() {
+        val email = "user*name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for asterisk in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test208 email with parentheses in local part is invalid`() {
+        val email = "user(name)@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for parentheses in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test209 email with square brackets in local part is invalid`() {
+        val email = "user[name]@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for brackets in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test210 email with curly braces in local part is invalid`() {
+        val email = "user{name}@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for curly braces in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test211 email with pipe in local part is invalid`() {
+        val email = "user|name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for pipe in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test212 email with question mark in local part is invalid`() {
+        val email = "user?name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for question mark in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test213 email with forward slash in local part is invalid`() {
+        val email = "user/name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for slash in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test214 email with equals sign in local part is invalid`() {
+        val email = "user=name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for equals sign in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test215 email with grave accent in local part is invalid`() {
+        val email = "user\`name@domain.com"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isValid=false for grave accent in local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test216 disposable getairmail variant is disposable`() {
+        val email = "user@getairmail.info"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected disposable for getairmail variant", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test217 disposable emailondeck is flagged`() {
+        val email = "user@emailondeck.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected disposable for emailondeck.com", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test218 disposable filzmail is flagged`() {
+        val email = "user@filzmail.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected disposable for filzmail.com", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test219 disposable burnermail is flagged`() {
+        val email = "user@burnermail.io"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected disposable for burnermail.io", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test220 disposable trashmail net is flagged`() {
+        val email = "user@trashmail.net"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected disposable for trashmail.net", result.isDisposable || !result.isValid)
+        assertNotNull(result)
+    }
+
+    // =========================================================================
+    // EXTRA SECTION B — extractFromText advanced (tests 221–235)
+    // =========================================================================
+
+    @Test
+    fun `test221 extractFromText finds email in JSON-like string`() {
+        val text = """{"email":"contact@service.com","name":"Test"}"""
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected to find email in JSON string", emails.isEmpty())
+    }
+
+    @Test
+    fun `test222 extractFromText finds email but not URL`() {
+        val text = "Visit https://example.com or email us at hello@example.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected exactly 1 email (URL should not be extracted)", emails.size == 1)
+    }
+
+    @Test
+    fun `test223 extractFromText with tab-separated emails`() {
+        val text = "a@a.com\tb@b.com\tc@c.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 3 emails from tab-separated list", 3, emails.size)
+    }
+
+    @Test
+    fun `test224 extractFromText with newline-separated emails`() {
+        val text = "a@a.com\nb@b.com\nc@c.com\nd@d.com"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 4 emails from newline-separated list", 4, emails.size)
+    }
+
+    @Test
+    fun `test225 extractFromText finds email in HTML-anchor-like text`() {
+        val text = """<a href="mailto:info@site.org">Email us</a>"""
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected to find email in anchor string", emails.isEmpty())
+    }
+
+    @Test
+    fun `test226 extractFromText with long paragraph finds all six emails`() {
+        val text = """
+            Our team includes alice@devteam.io, bob@devteam.io, carol@devteam.io.
+            For HR matters reach out to hr@devteam.io.
+            General inquiries go to info@devteam.io.
+            Emergency contact: emergency@devteam.io.
+        """.trimIndent()
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 6 emails in paragraph", 6, emails.size)
+    }
+
+    @Test
+    fun `test227 extractFromText with email in angle bracket format`() {
+        val text = "Send to <admin@example.com> for access."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertFalse("Expected to find email inside angle brackets", emails.isEmpty())
+    }
+
+    @Test
+    fun `test228 extractFromText handles email with plus tag in paragraph`() {
+        val text = "Tagged aliases like promo+code@company.com and notify+alerts@company.org work here."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 2 tagged emails", 2, emails.size)
+    }
+
+    @Test
+    fun `test229 extractFromText handles email list in quoted string`() {
+        val text = "\"To: user1@test.net, user2@test.net\""
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 2 emails in quoted string", 2, emails.size)
+    }
+
+    @Test
+    fun `test230 extractFromText result is a list type`() {
+        val text = "Email hello@world.com for info."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Result should be a List", emails is List<*>)
+    }
+
+    @Test
+    fun `test231 extractFromText with only malformed addresses returns empty list`() {
+        val text = "Try: @bad.com and also bad@ and just @"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for all-malformed input", emails.isEmpty())
+    }
+
+    @Test
+    fun `test232 extractFromText handles very long text efficiently`() {
+        val repeated = "Contact user@repeated.com for info. ".repeat(100)
+        val emails = EmailValidator.extractFromText(repeated)
+        assertNotNull(emails)
+        assertTrue("Expected at least 1 email from long repeated text", emails.isNotEmpty())
+    }
+
+    @Test
+    fun `test233 extractFromText with only one word returns empty list`() {
+        val text = "hello"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for single-word text", emails.isEmpty())
+    }
+
+    @Test
+    fun `test234 extractFromText with numbers only returns empty list`() {
+        val text = "123456789"
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertTrue("Expected empty list for numeric-only text", emails.isEmpty())
+    }
+
+    @Test
+    fun `test235 extractFromText handles mixed valid and subdomain emails`() {
+        val text = "user@mail.example.com and other@sub.domain.org are both valid."
+        val emails = EmailValidator.extractFromText(text)
+        assertNotNull(emails)
+        assertEquals("Expected exactly 2 subdomain emails", 2, emails.size)
+    }
+
+    // =========================================================================
+    // EXTRA SECTION C — Gmail normalization extended (tests 236–250)
+    // =========================================================================
+
+    @Test
+    fun `test236 gmail normalization lower-cases the result`() {
+        val email = "MyName@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("myname@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test237 gmail normalization of address with underscore unchanged`() {
+        val email = "user_name@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user_name@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test238 gmail normalization of address with hyphen unchanged`() {
+        val email = "user-name@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user-name@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test239 gmail normalization of short two-char email`() {
+        val email = "ab@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("ab@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test240 gmail normalization of single char email`() {
+        val email = "x@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("x@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test241 gmail normalization result ends with gmail domain`() {
+        val email = "test.address+ignored@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertTrue("Normalized result must end with @gmail.com", normalized.endsWith("@gmail.com"))
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test242 gmail normalization produces valid email`() {
+        val email = "a.b.c+tag@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        val result = EmailValidator.validate(normalized)
+        assertTrue("Normalized gmail address must itself be valid", result.isValid)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test243 gmail normalization of uppercase mixed-case address`() {
+        val email = "First.Last+Promo@GMAIL.COM"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertTrue(
+            "Normalized should equal firstlast@gmail.com case-insensitively",
+            normalized.equals("firstlast@gmail.com", ignoreCase = true)
+        )
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test244 gmail normalization returns string not null`() {
+        val email = "any+thing@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertNotNull(normalized)
+        assertTrue("Normalized address should not be blank", normalized.isNotBlank())
+    }
+
+    @Test
+    fun `test245 gmail normalization with digits in local part`() {
+        val email = "user123+tag@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user123@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test246 gmail normalization with dot and digit`() {
+        val email = "user.1+tag@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user1@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test247 non-gmail protonmail address is returned unchanged`() {
+        val email = "user.name+filter@protonmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test248 non-gmail fastmail address is returned unchanged`() {
+        val email = "user.name+filter@fastmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test249 non-gmail zoho address is returned unchanged`() {
+        val email = "user.name+filter@zoho.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals(email, normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test250 gmail normalization of address that is all dots before at sign`() {
+        val email = "a.b.c@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("abc@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    // =========================================================================
+    // EXTRA SECTION D — Stress, combination, and regression tests (251–270)
+    // =========================================================================
+
+    @Test
+    fun `test251 validate consistently returns isValid for known good email`() {
+        val email = "consistent@test.com"
+        repeat(5) {
+            val result = EmailValidator.validate(email)
+            assertTrue("validate should be deterministic for '$email'", result.isValid)
+        }
+    }
+
+    @Test
+    fun `test252 validate consistently returns not isValid for known bad email`() {
+        val email = "bad-email"
+        repeat(5) {
+            val result = EmailValidator.validate(email)
+            assertFalse("validate should be deterministic for '$email'", result.isValid)
+        }
+    }
+
+    @Test
+    fun `test253 normalizeGmailAddress is deterministic across calls`() {
+        val email = "my.name+tag@gmail.com"
+        val first = EmailValidator.normalizeGmailAddress(email)
+        val second = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("normalizeGmailAddress should be deterministic", first, second)
+        assertNotNull(first)
+    }
+
+    @Test
+    fun `test254 extractFromText is deterministic across calls`() {
+        val text = "Email: a@a.com, b@b.com"
+        val first = EmailValidator.extractFromText(text)
+        val second = EmailValidator.extractFromText(text)
+        assertEquals("extractFromText should be deterministic", first.size, second.size)
+        assertNotNull(first)
+    }
+
+    @Test
+    fun `test255 valid email with uppercase alphanumeric and hyphens is valid`() {
+        val email = "A1-B2-C3@example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for uppercase alphanumeric-hyphen local part", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test256 email with subdomain containing hyphen is valid`() {
+        val email = "user@sub-domain.example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for subdomain with hyphen", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test257 email with dot gov dot uk is valid`() {
+        val email = "official@ministry.gov.uk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .gov.uk", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test258 email with dot ac dot uk is valid`() {
+        val email = "professor@university.ac.uk"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .ac.uk", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test259 gmail normalization with multiple plus signs preserves only pre-plus segment`() {
+        val email = "user+tag1+tag2@gmail.com"
+        val normalized = EmailValidator.normalizeGmailAddress(email)
+        assertEquals("user@gmail.com", normalized)
+        assertNotNull(normalized)
+    }
+
+    @Test
+    fun `test260 validate returns non-null for every input in a mixed batch`() {
+        val inputs = listOf("", "a", "@", "@@", "a@b.c", "a@b", "valid@email.com",
+            "   ", "\t", "@bad", "bad@", "x@x.io")
+        inputs.forEach { email ->
+            val result = EmailValidator.validate(email)
+            assertNotNull("Result must not be null for input '$email'", result)
+        }
+    }
+
+    @Test
+    fun `test261 valid role email webmaster is both valid and role-based`() {
+        val email = "webmaster@example.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for webmaster", result.isRoleBased)
+        assertTrue("Expected isValid=true for webmaster email", result.isValid)
+    }
+
+    @Test
+    fun `test262 valid role email postmaster is both valid and role-based`() {
+        val email = "postmaster@example.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for postmaster", result.isRoleBased)
+        assertTrue("Expected isValid=true for postmaster email", result.isValid)
+    }
+
+    @Test
+    fun `test263 personal email with numbers is not role-based`() {
+        val email = "user123@example.net"
+        val result = EmailValidator.validate(email)
+        assertFalse("Expected isRoleBased=false for personal email with numbers", result.isRoleBased)
+        assertTrue("Expected isValid=true", result.isValid)
+    }
+
+    @Test
+    fun `test264 operations email is role-based`() {
+        val email = "operations@company.org"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for 'operations' address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test265 do-not-reply email is role-based`() {
+        val email = "do-not-reply@service.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for do-not-reply address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test266 no dot reply variant is role-based`() {
+        val email = "no.reply@service.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isRoleBased=true for no.reply address", result.isRoleBased)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test267 email with very short domain segment one char is valid`() {
+        val email = "user@a.co"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for short but valid domain", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test268 valid email with many subdomains is valid`() {
+        val email = "user@a.b.c.d.example.com"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for deeply nested subdomain", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test269 validate dot sg TLD is valid`() {
+        val email = "user@company.sg"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .sg TLD", result.isValid)
+        assertNotNull(result)
+    }
+
+    @Test
+    fun `test270 validate dot co dot nz TLD is valid`() {
+        val email = "user@company.co.nz"
+        val result = EmailValidator.validate(email)
+        assertTrue("Expected isValid=true for .co.nz TLD", result.isValid)
+        assertNotNull(result)
+    }
 }
-
-

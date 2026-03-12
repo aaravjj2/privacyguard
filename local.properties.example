@@ -1,0 +1,11 @@
+# local.properties.example
+# Copy this file to local.properties and fill in the required fields.
+# DO NOT commit local.properties to version control — it is already in .gitignore.
+
+# Android SDK location (set automatically by Android Studio)
+sdk.dir=/path/to/Android/Sdk
+
+# Melange Personal Key
+# Obtain your key from https://melange.ai after signing up.
+# Required to use the on-device AI model (Team_ZETIC/TextAnonymizer).
+melange.personal.key=YOUR_MELANGE_PERSONAL_KEY_HERE

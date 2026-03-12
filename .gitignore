@@ -74,3 +74,12 @@ test-reports/
 
 # Memory/cache files
 .claude/
+
+# Windows NTFS metadata
+*:Zone.Identifier
+
+# VS Code settings
+.vscode/
+
+# Project documents (internal)
+*.docx

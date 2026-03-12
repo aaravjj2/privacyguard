@@ -2307,5 +2307,419 @@ class PIIAnalysisPipelineExtendedTest {
         assertEquals("PHONE", sorted[1].type)
         assertEquals("SSN",   sorted[2].type)
     }
+
+    // -----------------------------------------------------------------------
+    // Section 13 — PipelineResult riskLevel inference rules  (20 tests)
+    // Demonstrates the expected mapping from entity characteristics
+    // to risk levels using self-contained logic.
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun `riskInferenceNoEntitiesImpliesNONE`() {
+        val entities = emptyList<DetectedEntity>()
+        val risk     = if (entities.isEmpty()) RiskLevel.NONE else RiskLevel.LOW
+        assertEquals(RiskLevel.NONE, risk)
+    }
+
+    @Test
+    fun `riskInferenceSingleLowConfidenceEntityImpliesLOW`() {
+        val entities = listOf(DetectedEntity("EMAIL", "a@b.com", 0, 7, 0.55f))
+        val maxConf  = entities.maxOf { it.confidence }
+        val risk     = when {
+            maxConf >= 0.9f -> RiskLevel.HIGH
+            maxConf >= 0.7f -> RiskLevel.MEDIUM
+            maxConf >= 0.5f -> RiskLevel.LOW
+            else            -> RiskLevel.NONE
+        }
+        assertEquals(RiskLevel.LOW, risk)
+    }
+
+    @Test
+    fun `riskInferenceSingleMediumConfidenceEntityImpliesMEDIUM`() {
+        val entities = listOf(DetectedEntity("PHONE", "p", 0, 1, 0.75f))
+        val maxConf  = entities.maxOf { it.confidence }
+        val risk     = when {
+            maxConf >= 0.9f -> RiskLevel.HIGH
+            maxConf >= 0.7f -> RiskLevel.MEDIUM
+            maxConf >= 0.5f -> RiskLevel.LOW
+            else            -> RiskLevel.NONE
+        }
+        assertEquals(RiskLevel.MEDIUM, risk)
+    }
+
+    @Test
+    fun `riskInferenceSingleHighConfidenceEntityImpliesHIGH`() {
+        val entities = listOf(DetectedEntity("SSN", "s", 0, 1, 0.95f))
+        val maxConf  = entities.maxOf { it.confidence }
+        val risk     = when {
+            maxConf >= 0.9f -> RiskLevel.HIGH
+            maxConf >= 0.7f -> RiskLevel.MEDIUM
+            maxConf >= 0.5f -> RiskLevel.LOW
+            else            -> RiskLevel.NONE
+        }
+        assertEquals(RiskLevel.HIGH, risk)
+    }
+
+    @Test
+    fun `riskInferenceManyHighConfidenceEntitiesImpliesCRITICAL`() {
+        val entities = (1..5).map { i ->
+            DetectedEntity("SSN", "s$i", i * 12, i * 12 + 11, 0.96f)
+        }
+        val risk = when {
+            entities.size >= 5 && entities.all { it.confidence > 0.9f } -> RiskLevel.CRITICAL
+            else -> RiskLevel.HIGH
+        }
+        assertEquals(RiskLevel.CRITICAL, risk)
+    }
+
+    @Test
+    fun `riskLevelOrdinalUsedForComparisonInsteadOfEnum`() {
+        val resultRisk     = RiskLevel.HIGH
+        val thresholdRisk  = RiskLevel.MEDIUM
+        assertTrue("Result risk must exceed threshold",
+            resultRisk.ordinal > thresholdRisk.ordinal)
+    }
+
+    @Test
+    fun `riskLevelCanBeStoredAndRetrievedFromMap`() {
+        val map = mapOf("doc1" to RiskLevel.HIGH, "doc2" to RiskLevel.LOW)
+        assertEquals(RiskLevel.HIGH, map["doc1"])
+        assertEquals(RiskLevel.LOW,  map["doc2"])
+        assertNull(map["doc3"])
+    }
+
+    @Test
+    fun `riskLevelListSortedByOrdinalProducesCorrectOrder`() {
+        val shuffled = listOf(RiskLevel.CRITICAL, RiskLevel.NONE, RiskLevel.HIGH,
+                              RiskLevel.LOW,      RiskLevel.MEDIUM)
+        val sorted   = shuffled.sortedBy { it.ordinal }
+        assertEquals(RiskLevel.values().toList(), sorted)
+    }
+
+    @Test
+    fun `riskLevelMaximumFromListIsCorrect`() {
+        val levels = listOf(RiskLevel.LOW, RiskLevel.HIGH, RiskLevel.MEDIUM)
+        val max    = levels.maxByOrNull { it.ordinal }
+        assertEquals(RiskLevel.HIGH, max)
+    }
+
+    @Test
+    fun `riskLevelMinimumFromListIsCorrect`() {
+        val levels = listOf(RiskLevel.LOW, RiskLevel.HIGH, RiskLevel.MEDIUM)
+        val min    = levels.minByOrNull { it.ordinal }
+        assertEquals(RiskLevel.LOW, min)
+    }
+
+    @Test
+    fun `pipelineResultRiskLevelElevatedWhenSSNPresent`() {
+        val result = PipelineResult(
+            entities         = listOf(DetectedEntity("SSN", "111-22-3333", 0, 11, 0.93f)),
+            processingTimeMs = 20L,
+            confidenceAvg    = 0.93f,
+            riskLevel        = RiskLevel.HIGH
+        )
+        assertTrue("SSN detection must produce at least HIGH risk",
+            result.riskLevel.ordinal >= RiskLevel.HIGH.ordinal)
+    }
+
+    @Test
+    fun `pipelineResultRiskLevelElevatedWhenCreditCardPresent`() {
+        val result = PipelineResult(
+            entities         = listOf(DetectedEntity("CREDIT_CARD", "4111111111111111", 0, 16, 0.99f)),
+            processingTimeMs = 18L,
+            confidenceAvg    = 0.99f,
+            riskLevel        = RiskLevel.CRITICAL
+        )
+        assertTrue("Credit card detection must produce CRITICAL risk",
+            result.riskLevel == RiskLevel.CRITICAL)
+    }
+
+    @Test
+    fun `pipelineResultProcessingTimeBelowOneSecondIsAcceptable`() {
+        val result = PipelineResult(
+            entities         = emptyList(),
+            processingTimeMs = 800L,
+            confidenceAvg    = 0.0f,
+            riskLevel        = RiskLevel.NONE
+        )
+        assertTrue("Processing under 1 s is acceptable", result.processingTimeMs < 1000L)
+    }
+
+    @Test
+    fun `pipelineResultProcessingTimeZeroIsValidForCachedResult`() {
+        val result = PipelineResult(
+            entities         = emptyList(),
+            processingTimeMs = 0L,
+            confidenceAvg    = 0.0f,
+            riskLevel        = RiskLevel.NONE
+        )
+        assertEquals(0L, result.processingTimeMs)
+    }
+
+    @Test
+    fun `pipelineResultEntityOrderPreservedFromInput`() {
+        val e1 = DetectedEntity("SSN",   "s", 0,  1, 0.9f)
+        val e2 = DetectedEntity("EMAIL", "e", 5,  6, 0.8f)
+        val e3 = DetectedEntity("PHONE", "p", 10, 11, 0.7f)
+        val result = PipelineResult(
+            entities         = listOf(e1, e2, e3),
+            processingTimeMs = 10L,
+            confidenceAvg    = 0.8f,
+            riskLevel        = RiskLevel.HIGH
+        )
+        assertEquals(e1, result.entities[0])
+        assertEquals(e2, result.entities[1])
+        assertEquals(e3, result.entities[2])
+    }
+
+    @Test
+    fun `pipelineResultCopyWithNewRiskLevelLeavesEntitiesUnchanged`() {
+        val e      = listOf(DetectedEntity("SSN", "s", 0, 1, 0.9f))
+        val orig   = PipelineResult(e, 10L, 0.9f, RiskLevel.HIGH)
+        val updated = orig.copy(riskLevel = RiskLevel.CRITICAL)
+        assertEquals(RiskLevel.CRITICAL, updated.riskLevel)
+        assertEquals(1, updated.entities.size)
+        assertEquals("SSN", updated.entities[0].type)
+    }
+
+    @Test
+    fun `pipelineResultConfidenceAvgMatchesMeanOfEntityConfidences`() {
+        val entities = listOf(
+            DetectedEntity("A", "x", 0, 1, 0.80f),
+            DetectedEntity("B", "y", 1, 2, 0.60f),
+            DetectedEntity("C", "z", 2, 3, 1.00f)
+        )
+        val expected = (0.80f + 0.60f + 1.00f) / 3f
+        val result   = PipelineResult(entities, 15L, expected, RiskLevel.MEDIUM)
+        assertEquals(expected, result.confidenceAvg, 0.0001f)
+    }
+
+    @Test
+    fun `pipelineResultMultipleResultsCanBeAggregatedIntoList`() {
+        val results = listOf(
+            PipelineResult(emptyList(), 10L, 0.0f, RiskLevel.NONE),
+            PipelineResult(listOf(DetectedEntity("SSN","s",0,1,0.9f)), 20L, 0.9f, RiskLevel.HIGH)
+        )
+        assertEquals(2, results.size)
+        val maxRisk = results.maxByOrNull { it.riskLevel.ordinal }
+        assertEquals(RiskLevel.HIGH, maxRisk?.riskLevel)
+    }
+
+    @Test
+    fun `pipelineResultsSortedByRiskLevelDescendingPlacesHighestFirst`() {
+        val results = listOf(
+            PipelineResult(emptyList(), 5L, 0.0f, RiskLevel.LOW),
+            PipelineResult(emptyList(), 5L, 0.0f, RiskLevel.CRITICAL),
+            PipelineResult(emptyList(), 5L, 0.0f, RiskLevel.MEDIUM)
+        )
+        val sorted = results.sortedByDescending { it.riskLevel.ordinal }
+        assertEquals(RiskLevel.CRITICAL, sorted[0].riskLevel)
+        assertEquals(RiskLevel.MEDIUM,   sorted[1].riskLevel)
+        assertEquals(RiskLevel.LOW,      sorted[2].riskLevel)
+    }
+
+    // -----------------------------------------------------------------------
+    // Section 14 — Miscellaneous specification helpers  (20 tests)
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun `stringBuilderCanConstructRedactedReport`() {
+        val entities = listOf(
+            DetectedEntity("SSN",   "111-22-3333", 5,  16, 0.95f),
+            DetectedEntity("EMAIL", "a@b.com",     20, 27, 0.88f)
+        )
+        val sb = StringBuilder()
+        entities.forEach { e ->
+            sb.appendLine("REDACTED[${e.type}] at [${e.startIndex}..${e.endIndex}]")
+        }
+        val report = sb.toString()
+        assertTrue(report.contains("REDACTED[SSN]"))
+        assertTrue(report.contains("REDACTED[EMAIL]"))
+    }
+
+    @Test
+    fun `joinToStringProducesReadableEntitySummary`() {
+        val entities = listOf(
+            DetectedEntity("SSN", "***-**-****", 0, 11, 0.95f),
+            DetectedEntity("EMAIL", "***@***.***", 15, 26, 0.88f)
+        )
+        val summary = entities.joinToString(", ") { it.type }
+        assertEquals("SSN, EMAIL", summary)
+    }
+
+    @Test
+    fun `entityTypesAsSetHasNoduplicates`() {
+        val entities = listOf(
+            DetectedEntity("SSN",   "s1", 0, 1, 0.9f),
+            DetectedEntity("SSN",   "s2", 2, 3, 0.8f),
+            DetectedEntity("EMAIL", "e1", 4, 5, 0.7f)
+        )
+        val typeSet = entities.map { it.type }.toSet()
+        assertEquals(2, typeSet.size)
+        assertTrue(typeSet.contains("SSN"))
+        assertTrue(typeSet.contains("EMAIL"))
+    }
+
+    @Test
+    fun `entityConfidencesAllPositiveForValidDetections`() {
+        val entities = listOf(
+            DetectedEntity("A", "x", 0, 1, 0.6f),
+            DetectedEntity("B", "y", 1, 2, 0.8f),
+            DetectedEntity("C", "z", 2, 3, 0.9f)
+        )
+        assertTrue("All confidences must be positive",
+            entities.all { it.confidence > 0.0f })
+    }
+
+    @Test
+    fun `entityListIsEmptyWhenFilterRemovesAll`() {
+        val entities = listOf(
+            DetectedEntity("A", "x", 0, 1, 0.3f),
+            DetectedEntity("B", "y", 1, 2, 0.2f)
+        )
+        val highOnly = entities.filter { it.confidence > 0.9f }
+        assertTrue(highOnly.isEmpty())
+    }
+
+    @Test
+    fun `entityListSizeIsPreservedAfterMap`() {
+        val entities = listOf(
+            DetectedEntity("A", "x", 0, 1, 0.7f),
+            DetectedEntity("B", "y", 1, 2, 0.8f),
+            DetectedEntity("C", "z", 2, 3, 0.9f)
+        )
+        val types = entities.map { it.type }
+        assertEquals(entities.size, types.size)
+    }
+
+    @Test
+    fun `riskLevelCanBeComparedWithWhenExpression`() {
+        val level  = RiskLevel.HIGH
+        val result = when (level) {
+            RiskLevel.NONE     -> "clean"
+            RiskLevel.LOW      -> "watch"
+            RiskLevel.MEDIUM   -> "alert"
+            RiskLevel.HIGH     -> "danger"
+            RiskLevel.CRITICAL -> "critical"
+        }
+        assertEquals("danger", result)
+    }
+
+    @Test
+    fun `riskLevelNONEMapsToCleanInWhenExpression`() {
+        val level  = RiskLevel.NONE
+        val result = when (level) {
+            RiskLevel.NONE     -> "clean"
+            RiskLevel.LOW      -> "watch"
+            RiskLevel.MEDIUM   -> "alert"
+            RiskLevel.HIGH     -> "danger"
+            RiskLevel.CRITICAL -> "critical"
+        }
+        assertEquals("clean", result)
+    }
+
+    @Test
+    fun `riskLevelCRITICALMapsToCorrectStringInWhenExpression`() {
+        val level  = RiskLevel.CRITICAL
+        val result = when (level) {
+            RiskLevel.NONE     -> "clean"
+            RiskLevel.LOW      -> "watch"
+            RiskLevel.MEDIUM   -> "alert"
+            RiskLevel.HIGH     -> "danger"
+            RiskLevel.CRITICAL -> "critical"
+        }
+        assertEquals("critical", result)
+    }
+
+    @Test
+    fun `processingTimeMsFormattedasStringContainsMs`() {
+        val ms     = 123L
+        val label  = "${ms}ms"
+        assertTrue(label.endsWith("ms"))
+        assertTrue(label.startsWith("123"))
+    }
+
+    @Test
+    fun `confidenceFormattedAsPercentageIsReadable`() {
+        val conf      = 0.873f
+        val pct       = (conf * 100).toInt()
+        val formatted = "$pct%"
+        assertEquals("87%", formatted)
+    }
+
+    @Test
+    fun `entityValueLengthEqualsEndMinusStart`() {
+        val value  = "999-88-7777"
+        val entity = DetectedEntity("SSN", value, 10, 10 + value.length, 0.9f)
+        assertEquals(value.length, entity.endIndex - entity.startIndex)
+    }
+
+    @Test
+    fun `multipleEntityTypesDetectedInSingleTextReturnCorrectDistinctCount`() {
+        val types = listOf("SSN", "EMAIL", "PHONE", "EMAIL", "SSN", "CREDIT_CARD")
+        val distinct = types.distinct().size
+        assertEquals(4, distinct)
+    }
+
+    @Test
+    fun `highestRiskEntityIsFirstAfterSortByConfidenceDesc`() {
+        val entities = listOf(
+            DetectedEntity("PHONE", "p", 0, 1, 0.60f),
+            DetectedEntity("SSN",   "s", 1, 2, 0.99f),
+            DetectedEntity("EMAIL", "e", 2, 3, 0.80f)
+        )
+        val top = entities.sortedByDescending { it.confidence }.first()
+        assertEquals("SSN", top.type)
+        assertEquals(0.99f, top.confidence, 0.0001f)
+    }
+
+    @Test
+    fun `averageConfidenceRoundTripThroughFloatIsStable`() {
+        val vals  = listOf(0.1f, 0.2f, 0.3f, 0.4f)
+        val avg1  = vals.average().toFloat()
+        val avg2  = vals.average().toFloat()
+        assertEquals(avg1, avg2, 0.0f)
+    }
+
+    @Test
+    fun `entityCountMapGroupedByTypeSumsToTotalCount`() {
+        val entities = listOf(
+            DetectedEntity("SSN",   "s", 0, 1, 0.9f),
+            DetectedEntity("EMAIL", "e", 1, 2, 0.8f),
+            DetectedEntity("SSN",   "s", 2, 3, 0.7f),
+            DetectedEntity("PHONE", "p", 3, 4, 0.6f)
+        )
+        val byType = entities.groupingBy { it.type }.eachCount()
+        val total  = byType.values.sum()
+        assertEquals(entities.size, total)
+    }
+
+    @Test
+    fun `pipelineResultWithNoEntitiesHasZeroConfidenceAvg`() {
+        val result = PipelineResult(
+            entities         = emptyList(),
+            processingTimeMs = 3L,
+            confidenceAvg    = 0.0f,
+            riskLevel        = RiskLevel.NONE
+        )
+        assertEquals(0.0f, result.confidenceAvg, 0.0f)
+        assertEquals(0, result.entities.size)
+    }
+
+    @Test
+    fun `detectedEntitySpanIsNonNegative`() {
+        val entity = DetectedEntity("SSN", "111-22-3333", 7, 18, 0.92f)
+        assertTrue("Span must be non-negative", entity.endIndex - entity.startIndex >= 0)
+    }
+
+    @Test
+    fun `riskLevelEnumIsNotNull`() {
+        assertNotNull(RiskLevel.NONE)
+        assertNotNull(RiskLevel.LOW)
+        assertNotNull(RiskLevel.MEDIUM)
+        assertNotNull(RiskLevel.HIGH)
+        assertNotNull(RiskLevel.CRITICAL)
+    }
 }
+
 

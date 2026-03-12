@@ -1,0 +1,76 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# IntelliJ/Android Studio
+*.iml
+.idea/
+*.ipr
+*.iws
+
+# Keystore files
+*.keystore
+*.jks
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# Google Services (usually contains API keys)
+google-services.json
+
+# Captures
+captures/
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Signing configs
+signing.properties
+
+# Proguard
+proguard/
+
+# NDK
+obj/
+
+# Kotlin
+*.kotlin_module
+
+# Test outputs
+test-results/
+test-reports/
+
+# Memory/cache files
+.claude/

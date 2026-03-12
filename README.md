@@ -2,6 +2,12 @@
 
 > On-Device PII Protection Powered by Melange AI
 
+[![Build & Test](https://github.com/aaravjj2/privacyguard/actions/workflows/build.yml/badge.svg)](https://github.com/aaravjj2/privacyguard/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-API%2026%2B-green.svg)](https://developer.android.com)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9-blue.svg)](https://kotlinlang.org)
+[![Melange](https://img.shields.io/badge/Powered%20by-Melange%201.2.2-purple.svg)](https://melange.ai)
+
 ```
     +------------------+
     |   PRIVACYGUARD   |
@@ -175,7 +181,7 @@ PrivacyGuard is built on a zero-trust, zero-network architecture:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/privacyguard.git
+   git clone https://github.com/aaravjj2/privacyguard.git
    cd privacyguard
    ```
 
@@ -223,7 +229,17 @@ PrivacyGuard is built on a zero-trust, zero-network architecture:
 
 ## Demo Video
 
-[Placeholder -- Demo video link will be added here]
+**[Demo Video — add YouTube/Loom link here after recording]**
+
+The 2–3 minute walkthrough should cover:
+1. **App overview** (0:00–0:20) — Launch PrivacyGuard, show the dashboard
+2. **Clipboard detection** (0:20–0:50) — Copy a credit card number, watch the real-time alert
+3. **SSN detection** (0:50–1:20) — Copy a formatted SSN, show the overlay warning
+4. **Airplane mode test** (1:20–1:50) — Enable airplane mode and confirm detection still works (fully on-device)
+5. **Detection history** (1:50–2:20) — Browse the encrypted event log in the History screen
+6. **Settings** (2:20–2:50) — Show whitelist management, sensitivity controls, and report export
+
+*Record with Android Studio's built-in screen recorder or a physical device, upload to YouTube as unlisted or Loom, then paste the URL above.*
 
 ## License
 

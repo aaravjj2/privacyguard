@@ -73,6 +73,65 @@ PrivacyGuard follows a strict layered architecture where data flows downward thr
 
 ---
 
+## Architecture Diagram (Mermaid)
+
+```mermaid
+flowchart TD
+    subgraph Presentation["Presentation Layer (Jetpack Compose / Material3)"]
+        MainActivity
+        DashboardScreen
+        SettingsScreen
+        EventDetailScreen
+        PrivacyReportScreen
+    end
+
+    subgraph Services["Service Layer (Android Services)"]
+        ClipboardMonitorService["ClipboardMonitorService\n(Foreground Service)"]
+        PiiAccessibilityService["PiiAccessibilityService\n(AccessibilityService)"]
+    end
+
+    subgraph Detection["Detection Layer"]
+        Debouncer["Debouncer (300ms)"]
+        RegexScreener["RegexPreScreener\n(Luhn, SSN, Email, Phone)"]
+        MelangeNER["MelangeNerClassifier\n(Team_ZETIC/TextAnonymizer)"]
+        OutputDecoder["OutputDecoder\n(BIO → Entity Spans)"]
+    end
+
+    subgraph Response["Response Layer"]
+        AlertManager["AlertManager\n(Severity Scoring, Overlay, Notifications)"]
+        LogRepository["EncryptedLogRepository\n(AES-256-GCM, Android Keystore)"]
+    end
+
+    subgraph Data["Data Layer (Room + EncryptedSharedPreferences)"]
+        DetectionEventDao
+        WhitelistDao
+        SettingsRepository
+    end
+
+    DashboardScreen <--> MainActivity
+    SettingsScreen <--> MainActivity
+    EventDetailScreen <--> DashboardScreen
+    PrivacyReportScreen <--> DashboardScreen
+
+    ClipboardMonitorService -->|Text snippet| Debouncer
+    PiiAccessibilityService -->|Text snippet| Debouncer
+
+    Debouncer --> RegexScreener
+    RegexScreener -->|Candidate text| MelangeNER
+    MelangeNER -->|Logits| OutputDecoder
+    RegexScreener -->|Direct match| AlertManager
+
+    OutputDecoder -->|PIIEntities| AlertManager
+    AlertManager --> LogRepository
+    AlertManager -->|Overlay / Notification| Presentation
+
+    LogRepository --> DetectionEventDao
+    SettingsRepository --> WhitelistDao
+    DetectionEventDao --> DashboardScreen
+```
+
+---
+
 ## Component Descriptions
 
 ### Presentation Layer

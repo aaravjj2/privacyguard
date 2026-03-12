@@ -1645,6 +1645,11 @@ class PhoneValidatorExtendedTest {
         assertTrue(e164!!.startsWith("+612"))
     }
 
+    // --- sub-group: compact formats and E.164 idempotency (019–025) ---
+    // Local 10-digit mobile strings without separators, canonical E.164
+    // passthrough for both landline and mobile, Darwin NT and Canberra ACT
+    // area codes, and the 0400 / 0499 mobile range extremes are verified.
+
     @Test
     fun `test australian 019 mobile no separator digits only`() {
         // Compact 10-digit mobile: 0412345678
@@ -1775,6 +1780,11 @@ class PhoneValidatorExtendedTest {
         assertNotNull(e164)
         assertEquals("+817012345678", e164)
     }
+
+    // --- sub-group: local formats and additional Japanese cities (006–008) ---
+    // Local dash-separated Tokyo and mobile formats, plus Nagoya (052), are
+    // verified to confirm that the regional-format parser strips dashes and
+    // prepends the +81 country code correctly.
 
     @Test
     fun `test japanese 006 tokyo local dash format`() {
@@ -1964,6 +1974,10 @@ class PhoneValidatorExtendedTest {
         assertNotNull(e164)
         assertEquals("+916543210987", e164)
     }
+
+    // --- sub-group: Indian landlines and local number formats (005–008) ---
+    // Delhi (011), Mumbai (022), raw 10-digit mobile strings, and the legacy
+    // trunk-prefix (0 + 10-digit) format are verified in this sub-group.
 
     @Test
     fun `test indian 005 delhi landline 011 plus91`() {
@@ -2273,6 +2287,10 @@ class PhoneValidatorExtendedTest {
         assertNull(result)
     }
 
+    // --- sub-group: clearly invalid inputs (018–019) ---
+    // Pure letters, the default-region behaviour, and structural invariants
+    // of the resulting E.164 string are confirmed in this sub-group.
+
     @Test
     fun `test format e164 018 letters only yields null`() {
         // Pure alphabetic strings cannot be dialled
@@ -2338,6 +2356,12 @@ class PhoneValidatorExtendedTest {
         assertNotNull(result)
         assertTrue(result!!.startsWith("+4915"))
     }
+
+    // --- sub-group: international mobile formats and output invariants (026–030) ---
+    // French, Australian, and Indian mobiles are converted to E.164 and the
+    // structural invariants (starts-with-plus, no special characters, length
+    // within E.164 bounds) are re-confirmed for a range of input countries.
+    // Special-character-only strings and 16-digit numbers must yield null.
 
     @Test
     fun `test format e164 026 french mobile correct e164`() {
@@ -2575,6 +2599,11 @@ class PhoneValidatorExtendedTest {
         val input = "     "
         assertFalse(PhoneValidator.looksLikePhoneNumber(input))
     }
+
+    // --- sub-group: bare symbols, toll-free, embedded phones, compact intl (026–030) ---
+    // A bare '+', "+1" country-code-only, toll-free 1-800 format, a natural-
+    // language sentence with an embedded number, and a compact international
+    // mobile string round out the heuristic edge-case coverage.
 
     @Test
     fun `test looks like phone 026 plus sign only false`() {

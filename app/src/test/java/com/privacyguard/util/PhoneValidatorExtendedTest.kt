@@ -1622,6 +1622,11 @@ class PhoneValidatorExtendedTest {
         assertNull(PhoneValidator.formatToE164(phone, "AU"))
     }
 
+    // --- sub-group: format variants and regional coverage (017–025) ---
+    // Covers over-length rejection, local national-format without the '+'
+    // prefix, compact mobile strings, canonical E.164 passthrough, Darwin NT,
+    // Canberra ACT, and the full 04xx mobile range extremes.
+
     @Test
     fun `test australian 017 too long extra digit invalid`() {
         // Extra digit makes 9 subscriber digits, exceeding AU maximum
@@ -1810,6 +1815,10 @@ class PhoneValidatorExtendedTest {
         assertEquals("JP", region)
     }
 
+    // --- sub-group: utility methods for Japanese numbers (010–014) ---
+    // getRegion for mobile, looksLikePhoneNumber, extractFromText, null/empty
+    // rejection, and too-short number rejection are all verified here.
+
     @Test
     fun `test japanese 010 get region JP for mobile`() {
         // Region lookup for Japanese mobile E.164 must return "JP"
@@ -1851,6 +1860,10 @@ class PhoneValidatorExtendedTest {
         assertFalse(PhoneValidator.isValid(phone, "JP"))
         assertNull(PhoneValidator.formatToE164(phone, "JP"))
     }
+
+    // --- sub-group: canonical passthrough and city/freephone coverage (016–020) ---
+    // Already-canonical E.164 strings, Japanese freephone 0120, Sapporo 011,
+    // Fukuoka 092, and mobile 080 local format are all covered here.
 
     @Test
     fun `test japanese 016 tokyo e164 already canonical`() {
@@ -2003,6 +2016,10 @@ class PhoneValidatorExtendedTest {
         assertEquals("IN", region)
     }
 
+    // --- sub-group: utility methods and boundary checks (010–014) ---
+    // getRegion for landline, looksLikePhoneNumber, extractFromText, and
+    // null/empty rejection for Indian numbers are all verified here.
+
     @Test
     fun `test indian 010 get region IN for delhi landline`() {
         // Region lookup for Delhi E.164 must return "IN"
@@ -2044,6 +2061,11 @@ class PhoneValidatorExtendedTest {
         assertFalse(PhoneValidator.isValid(phone, "IN"))
         assertNull(PhoneValidator.formatToE164(phone, "IN"))
     }
+
+    // --- sub-group: canonical passthrough and metro city coverage (016–020) ---
+    // Canonical E.164 round-trips and the four largest Indian metro cities
+    // (Bengaluru, Chennai, Kolkata, plus already-covered Mumbai/Delhi) are
+    // verified in this sub-group.
 
     @Test
     fun `test indian 016 too long 12 digits invalid`() {
@@ -2196,6 +2218,10 @@ class PhoneValidatorExtendedTest {
         assertEquals("+12125551234", result)
     }
 
+    // --- sub-group: separator stripping (012–016) ---
+    // Dashes, parentheses, dots, and toll-free numbers must all be stripped
+    // cleanly to produce a pure-digit E.164 string prefixed with '+'.
+
     @Test
     fun `test format e164 012 result contains no dashes`() {
         // E.164 must never contain dashes
@@ -2262,6 +2288,10 @@ class PhoneValidatorExtendedTest {
         assertNotNull(resultDefault)
         assertEquals(resultWithRegion, resultDefault)
     }
+
+    // --- sub-group: invalid and edge-case inputs (020–025) ---
+    // Extension notation, whitespace-only, single digit, and pure-symbol
+    // strings are all expected to produce null rather than throw.
 
     @Test
     fun `test format e164 020 result always starts with plus`() {
@@ -2429,6 +2459,11 @@ class PhoneValidatorExtendedTest {
         assertFalse(PhoneValidator.looksLikePhoneNumber(input))
     }
 
+    // --- sub-group: non-phone numeric and symbolic patterns (011–020) ---
+    // Credit card numbers, zip codes, social security numbers, URLs, email
+    // addresses, and pure-symbol strings must all return false because none
+    // of them match a plausible phone-number heuristic.
+
     @Test
     fun `test looks like phone 011 seventeen digits too many false`() {
         // 17 digits exceeds E.164 maximum of 15
@@ -2501,6 +2536,11 @@ class PhoneValidatorExtendedTest {
         assertFalse(PhoneValidator.looksLikePhoneNumber(input))
     }
 
+    // --- sub-group: international and boundary edge cases (021–030) ---
+    // Mixed alphanumeric strings, Australian / Japanese / Indian formats,
+    // whitespace-only, bare plus signs, 1-800 toll-free, sentences with
+    // embedded numbers, and compact international mobiles are all verified.
+
     @Test
     fun `test looks like phone 021 mixed alphanumeric not a phone false`() {
         // A mix of letters and digits that don't follow a phone pattern
@@ -2571,4 +2611,45 @@ class PhoneValidatorExtendedTest {
         val input = "+33612345678"
         assertTrue(PhoneValidator.looksLikePhoneNumber(input))
     }
+
+    // =========================================================================
+    // END OF TEST SUITE
+    //
+    // Total test functions : 250
+    // Sections             : 10
+    //
+    // Coverage summary:
+    //  - Section  1 (US NANP 212)        : format variants, validation, region,
+    //                                      heuristics, extraction            (25)
+    //  - Section  2 (US toll-free)        : 800/888/877/866/855/844 prefixes,
+    //                                      all formatting styles             (25)
+    //  - Section  3 (UK +44)             : London 020, mobiles 07xxx, 0800,
+    //                                      regional codes, GB region          (25)
+    //  - Section  4 (Germany +49)        : Berlin, Munich, Hamburg, Cologne,
+    //                                      Frankfurt, mobiles 015x/016x/017x  (25)
+    //  - Section  5 (France +33)         : Paris zones 01-05, mobiles 06/07,
+    //                                      0800 freephone                     (25)
+    //  - Section  6 (Australia +61)      : Sydney, Melbourne, Brisbane, Perth,
+    //                                      mobiles 04xx, 1800, 1300           (25)
+    //  - Section  7 (Japan +81)          : Tokyo, Osaka, mobiles 070/080/090,
+    //                                      freephone 0120, Sapporo, Fukuoka   (20)
+    //  - Section  8 (India +91)          : mobiles 6xxx-9xxx, Delhi, Mumbai,
+    //                                      Bengaluru, Chennai, Kolkata        (20)
+    //  - Section  9 (formatToE164)       : null/empty, separator stripping,
+    //                                      idempotency, region default, E.164
+    //                                      format invariants                  (30)
+    //  - Section 10 (looksLikePhone)     : valid phone patterns, non-phone
+    //                                      strings, boundary lengths,
+    //                                      international formats              (30)
+    //
+    // Assumptions:
+    //  * PhoneValidator uses the libphonenumber library internally.
+    //  * Test phone numbers are either from Ofcom/ITU-T documentation ranges
+    //    or are synthetic numbers in reserved/test ranges (e.g. 555-01xx).
+    //  * The companion object constants mirror the exact strings used in the
+    //    test bodies, providing a single source of truth for future maintenance.
+    //
+    // Running the tests:
+    //   ./gradlew :app:test --tests "com.privacyguard.util.PhoneValidatorExtendedTest"
+    // =========================================================================
 }

@@ -25,6 +25,25 @@ Real-time, fully on-device privacy protection for Android that detects and block
 
 ---
 
+## Screenshots
+
+| Welcome | Dashboard | Settings | Detection History |
+|:---:|:---:|:---:|:---:|
+| ![Onboarding](docs/screenshots/00_onboarding_welcome.png) | ![Dashboard](docs/screenshots/01_dashboard.png) | ![Settings](docs/screenshots/03_settings.png) | ![History](docs/screenshots/04_detection_history.png) |
+
+<details>
+<summary>More screenshots</summary>
+
+| PII Detection | Airplane Mode (Offline Proof) | Cross-App Accessibility |
+|:---:|:---:|:---:|
+| ![Detection](docs/screenshots/02_pii_detection.png) | ![Airplane Mode](docs/screenshots/05_airplane_mode.png) | ![Chrome](docs/screenshots/07_chrome_urlbar.png) |
+
+</details>
+
+> **Download the APK:** [PrivacyGuard v1.0.0](https://github.com/aaravjj2/privacyguard/releases/tag/v1.0.0)
+
+---
+
 ## The Problem
 
 Every day, users unknowingly copy and paste sensitive personal information -- credit card numbers, Social Security numbers, email addresses, phone numbers, and more -- through their device clipboard. This data silently sits in the clipboard buffer, accessible to any app with clipboard read permissions. A single careless paste into a chat window, search bar, or web form can expose critical PII to unintended recipients or malicious applications harvesting clipboard contents.

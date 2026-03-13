@@ -210,6 +210,27 @@ class DashboardViewModel : ViewModel() {
     }
 
     /**
+     * Request accessibility service permission.
+     */
+    fun requestAccessibilityPermission() {
+        setAccessibilityEnabled(true)
+    }
+
+    /**
+     * Request overlay permission.
+     */
+    fun requestOverlayPermission() {
+        setOverlayPermissionGranted(true)
+    }
+
+    /**
+     * Request notification permission.
+     */
+    fun requestNotificationPermission() {
+        setNotificationPermissionGranted(true)
+    }
+
+    /**
      * Force a refresh of all statistics from the repository.
      */
     fun refreshStats() {

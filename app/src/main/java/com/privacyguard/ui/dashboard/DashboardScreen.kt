@@ -142,7 +142,8 @@ fun DashboardScreen(
                                 permission = "Accessibility Service",
                                 message = "Enable accessibility service to monitor text fields across apps.",
                                 icon = Icons.Default.Accessibility,
-                                actionLabel = "Enable"
+                                actionLabel = "Enable",
+                                onClick = { viewModel.requestAccessibilityPermission() }
                             )
                         }
                     }
@@ -157,7 +158,8 @@ fun DashboardScreen(
                                 permission = "Overlay Permission",
                                 message = "Grant overlay permission to show real-time PII alerts.",
                                 icon = Icons.Default.Layers,
-                                actionLabel = "Grant"
+                                actionLabel = "Grant",
+                                onClick = { viewModel.requestOverlayPermission() }
                             )
                         }
                     }
@@ -172,7 +174,8 @@ fun DashboardScreen(
                                 permission = "Notification Permission",
                                 message = "Allow notifications to receive alerts about detected PII.",
                                 icon = Icons.Default.Notifications,
-                                actionLabel = "Allow"
+                                actionLabel = "Allow",
+                                onClick = { viewModel.requestNotificationPermission() }
                             )
                         }
                     }
@@ -678,7 +681,8 @@ fun PermissionWarningCard(
     permission: String,
     message: String,
     icon: ImageVector = Icons.Default.Warning,
-    actionLabel: String = "Enable"
+    actionLabel: String = "Enable",
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -714,7 +718,7 @@ fun PermissionWarningCard(
             }
             Spacer(Modifier.width(8.dp))
             FilledTonalButton(
-                onClick = { /* handled by parent */ },
+                onClick = onClick,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(actionLabel, style = MaterialTheme.typography.labelSmall)

@@ -1,8 +1,10 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.privacyguard.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -176,7 +178,25 @@ fun EventDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (String) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val vmState by viewModel.uiState.collectAsState()
+    val uiState = EventDetailUiState(
+        event = vmState.event,
+        isLoading = vmState.isLoading,
+        errorMessage = vmState.errorMessage,
+        redactedText = vmState.redactedSummary,
+        originalTextLength = 0,
+        tokenSpans = emptyList(),
+        characterIndices = IntRange.EMPTY,
+        timelineSteps = emptyList(),
+        similarDetections = vmState.relatedEvents,
+        sourceAppInfo = null,
+        showDeleteConfirmation = vmState.showDeleteConfirmation,
+        showFalsePositiveDialog = vmState.showFalsePositiveDialog,
+        showWhitelistConfirmation = vmState.showWhitelistConfirmation,
+        actionInProgress = null,
+        actionResult = vmState.actionMessage?.let { msg -> ActionResult(EventAction.DELETE, true, msg) },
+        isExpanded = vmState.isExpanded
+    )
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -554,7 +574,7 @@ private fun EventDetailContent(
                 event = event,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -568,7 +588,7 @@ private fun EventDetailContent(
                 onToggleExpand = { onToggleSection("redacted_text") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -579,7 +599,7 @@ private fun EventDetailContent(
                 event = event,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -591,7 +611,7 @@ private fun EventDetailContent(
                 onToggleExpand = { onToggleSection("timeline") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -605,7 +625,7 @@ private fun EventDetailContent(
                 onToggleExpand = { onToggleSection("technical") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -620,7 +640,7 @@ private fun EventDetailContent(
                 onWhitelistSource = onWhitelistSource,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateItem()
+                    .animateItemPlacement()
             )
         }
 
@@ -629,7 +649,7 @@ private fun EventDetailContent(
             item(key = "similar_header") {
                 SimilarDetectionsHeader(
                     count = uiState.similarDetections.size,
-                    modifier = Modifier.animateItem()
+                    modifier = Modifier.animateItemPlacement()
                 )
             }
 
@@ -642,7 +662,7 @@ private fun EventDetailContent(
                     onClick = { onNavigateToEvent(similarEvent.id) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateItem()
+                        .animateItemPlacement()
                 )
             }
         }
@@ -1192,7 +1212,7 @@ private fun SourceAppInfoSection(
             // Stats row
             if (sourceInfo != null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(

@@ -1,8 +1,10 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.privacyguard.ui.settings
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -2377,17 +2379,6 @@ fun ConfidenceThresholdsSubSection(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Border import helper (used by color picker)
-// ---------------------------------------------------------------------------
-
-private fun Modifier.border(
-    width: androidx.compose.ui.unit.Dp,
-    color: Color,
-    shape: androidx.compose.ui.graphics.Shape
-): Modifier = this.then(
-    androidx.compose.foundation.border(width, color, shape)
-)
 
 // ---------------------------------------------------------------------------
 // Preview Composables (8+)

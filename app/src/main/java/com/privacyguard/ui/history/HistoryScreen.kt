@@ -250,6 +250,7 @@ private fun HistorySearchBar(
 // Filter Chips Row
 // ---------------------------------------------------------------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilterChipsRow(
     selectedFilter: SeverityFilter,
@@ -432,22 +433,21 @@ private fun HistoryEventList(
             displayedEvents,
             key = { it.id }
         ) { event ->
-            val dismissState = rememberSwipeToDismissBoxState(
+            val dismissState = rememberDismissState(
                 confirmValueChange = { value ->
-                    if (value == SwipeToDismissBoxValue.EndToStart) {
+                    if (value == DismissValue.DismissedToStart) {
                         onDeleteEvent(event.id)
                         true
                     } else false
                 }
             )
 
-            SwipeToDismissBox(
+            SwipeToDismiss(
                 state = dismissState,
-                backgroundContent = {
+                background = {
                     SwipeDeleteBackground(dismissState)
                 },
-                enableDismissFromStartToEnd = false,
-                content = {
+                dismissContent = {
                     HistoryEventCard(event)
                 }
             )
@@ -485,14 +485,14 @@ private fun HistoryEventList(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeDeleteBackground(dismissState: SwipeToDismissBoxState) {
+private fun SwipeDeleteBackground(dismissState: DismissState) {
     val color by animateColorAsState(
-        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart)
+        targetValue = if (dismissState.targetValue == DismissValue.DismissedToStart)
             AlertRed else Color.Transparent,
         label = "swipe_bg_color"
     )
     val scale by animateFloatAsState(
-        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 1.2f else 0.8f,
+        targetValue = if (dismissState.targetValue == DismissValue.DismissedToStart) 1.2f else 0.8f,
         label = "swipe_icon_scale"
     )
 

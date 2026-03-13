@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+
 package com.privacyguard.ui.components
 
 import androidx.compose.animation.*
@@ -5,6 +7,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -416,7 +419,7 @@ fun ConfirmDeleteDialog(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         LinearProgressIndicator(
-                            progress = { remainingSeconds.toFloat() / countdownSeconds },
+                            progress = remainingSeconds.toFloat() / countdownSeconds,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(4.dp)
@@ -1047,7 +1050,7 @@ fun OnboardingPermissionDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = progress,
                     modifier = Modifier
                         .fillMaxWidth(0.6f)
                         .height(4.dp)

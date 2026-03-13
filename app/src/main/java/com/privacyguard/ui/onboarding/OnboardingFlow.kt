@@ -3,6 +3,7 @@ package com.privacyguard.ui.onboarding
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -167,8 +168,8 @@ private val onboardingPages = listOf(
         secondaryColor = SuccessGreen,
         features = listOf(
             OnboardingFeature(Icons.Default.CloudOff, "No cloud connectivity", ProtectionActive),
-            OnboardingFeature(Icons.Default.AnalyticsOutlined, "Zero analytics or tracking", SuccessGreen),
-            OnboardingFeature(Icons.Default.StorageOutlined, "Local-only storage", TrustBlue),
+            OnboardingFeature(Icons.Outlined.Analytics, "Zero analytics or tracking", SuccessGreen),
+            OnboardingFeature(Icons.Outlined.Storage, "Local-only storage", TrustBlue),
             OnboardingFeature(Icons.Default.Code, "Open source model", TrustBlueLight)
         )
     ),
@@ -261,7 +262,7 @@ private val onboardingPages = listOf(
  * @param onRequestNotificationPermission Callback to request notification permission.
  * @param onSkip Callback when the user skips onboarding.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingFlow(
     onComplete: () -> Unit = {},
@@ -306,8 +307,7 @@ fun OnboardingFlow(
         // Main pager
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f),
-            beyondViewportPageCount = 1
+            modifier = Modifier.weight(1f)
         ) { pageIndex ->
             val page = pages[pageIndex]
 
@@ -431,7 +431,7 @@ fun OnboardingTopBar(
         }
 
         LinearProgressIndicator(
-            progress = { progress },
+            progress = progress,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(3.dp)
@@ -1854,7 +1854,7 @@ fun RocketIllustration(
         val rocketPath = Path().apply {
             // Nose cone
             moveTo(cx, cy - bodyHeight / 2f - bodyWidth * 0.5f)
-            quadraticTo(
+            quadraticBezierTo(
                 cx + bodyWidth / 2f, cy - bodyHeight / 2f + bodyWidth * 0.2f,
                 cx + bodyWidth / 2f, cy - bodyHeight / 4f
             )
@@ -1872,7 +1872,7 @@ fun RocketIllustration(
             lineTo(cx - bodyWidth / 2f, cy + bodyHeight / 4f)
             // Left side
             lineTo(cx - bodyWidth / 2f, cy - bodyHeight / 4f)
-            quadraticTo(
+            quadraticBezierTo(
                 cx - bodyWidth / 2f, cy - bodyHeight / 2f + bodyWidth * 0.2f,
                 cx, cy - bodyHeight / 2f - bodyWidth * 0.5f
             )
@@ -1906,7 +1906,7 @@ fun RocketIllustration(
         val flameHeight = bodyHeight * 0.25f
         val flamePath = Path().apply {
             moveTo(cx - bodyWidth * 0.2f, cy + bodyHeight / 2.5f)
-            quadraticTo(
+            quadraticBezierTo(
                 cx, cy + bodyHeight / 2.5f + flameHeight * flameAlpha,
                 cx + bodyWidth * 0.2f, cy + bodyHeight / 2.5f
             )
@@ -1924,7 +1924,7 @@ fun RocketIllustration(
         // Inner flame
         val innerFlamePath = Path().apply {
             moveTo(cx - bodyWidth * 0.1f, cy + bodyHeight / 2.5f)
-            quadraticTo(
+            quadraticBezierTo(
                 cx, cy + bodyHeight / 2.5f + flameHeight * 0.6f * flameAlpha,
                 cx + bodyWidth * 0.1f, cy + bodyHeight / 2.5f
             )

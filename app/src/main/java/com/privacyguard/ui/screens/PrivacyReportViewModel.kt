@@ -431,7 +431,7 @@ class PrivacyReportViewModel : ViewModel() {
         private const val MAX_APP_STATS = 20
 
         /** Maximum number of entity type stats to include in the breakdown. */
-        private const val MAX_ENTITY_TYPE_STATS = EntityType.entries.size
+        private val MAX_ENTITY_TYPE_STATS = EntityType.entries.size
 
         /** Penalty per critical detection when computing a day's risk score. */
         private const val CRITICAL_DAILY_PENALTY = 20

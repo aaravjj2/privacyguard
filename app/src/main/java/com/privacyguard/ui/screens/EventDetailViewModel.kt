@@ -199,7 +199,10 @@ data class EventDetailViewModelUiState(
 
     // Action in progress
     val actionInProgress: Boolean = false,
-    val actionMessage: String? = null
+    val actionMessage: String? = null,
+
+    // Section expand/collapse state
+    val isExpanded: Map<String, Boolean> = emptyMap()
 )
 
 // ---------------------------------------------------------------------------
@@ -794,7 +797,6 @@ class EventDetailViewModel : ViewModel() {
                     it.copy(
                         isWhitelisted = true,
                         actionInProgress = false,
-                        actionMessage = null,
                         sourceAppInfo = updatedSourceInfo,
                         actionMessage = "${event.sourceAppName ?: packageName} added to whitelist."
                     )

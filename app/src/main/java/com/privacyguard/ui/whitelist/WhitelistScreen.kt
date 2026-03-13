@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.privacyguard.ui.whitelist
 
 import androidx.compose.animation.*

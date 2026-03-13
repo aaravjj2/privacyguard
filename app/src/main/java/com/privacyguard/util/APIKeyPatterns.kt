@@ -289,7 +289,7 @@ object APIKeyPatterns {
         KeyPattern(
             provider = "PayPal",
             keyType = "Braintree Access Token",
-            pattern = Regex("""access_token\$production\$[0-9a-z]{16}\$[0-9a-f]{32}"""),
+            pattern = Regex("""access_token\${'$'}production\${'$'}[0-9a-z]{16}\${'$'}[0-9a-f]{32}"""),
             severity = KeySeverity.CRITICAL,
             description = "PayPal Braintree production access token",
             remediation = "Regenerate in Braintree Control Panel",

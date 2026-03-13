@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+
 package com.privacyguard.ui.screens
 
 import androidx.compose.animation.*
@@ -6,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -1057,6 +1060,7 @@ private fun RiskTrendLineChart(
     val lineColor = MaterialTheme.colorScheme.primary
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
     val labelColor = MaterialTheme.colorScheme.onSurface
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val dangerColor = Color(0xFFE53935)
     val warningColor = Color(0xFFF57C00)
     val density = LocalDensity.current
@@ -1164,7 +1168,7 @@ private fun RiskTrendLineChart(
                     else -> lineColor
                 }
                 drawCircle(
-                    color = MaterialTheme.colorScheme.surface,
+                    color = surfaceColor,
                     radius = 5f,
                     center = Offset(pt.x, pt.y)
                 )
@@ -1259,7 +1263,7 @@ private fun TopEntityTypesSection(stats: List<EntityTypeStats>) {
                     maxCount = maxCount
                 )
                 if (index < stats.take(8).lastIndex) {
-                    HorizontalDivider(
+                    Divider(
                         modifier = Modifier.padding(vertical = 4.dp),
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -1360,7 +1364,7 @@ private fun EntityTypeStatRow(
 
         // Progress bar
         LinearProgressIndicator(
-            progress = { barProgress },
+            progress = barProgress,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
@@ -1490,7 +1494,7 @@ private fun AppBreakdownSection(
                     onClick = { onAppClicked(app) }
                 )
                 if (index < appStats.take(10).lastIndex) {
-                    HorizontalDivider(
+                    Divider(
                         modifier = Modifier.padding(vertical = 4.dp),
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
@@ -1590,7 +1594,7 @@ private fun AppBreakdownCard(
 
                 // Progress bar
                 LinearProgressIndicator(
-                    progress = { barProgress },
+                    progress = barProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)
@@ -1926,7 +1930,7 @@ private fun ExportProgressDialog(
                     textAlign = TextAlign.Center
                 )
                 LinearProgressIndicator(
-                    progress = { progressPercent / 100f },
+                    progress = progressPercent / 100f,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
@@ -1980,7 +1984,7 @@ private fun ExportSuccessDialog(
                     text = "Your ${format.displayName} has been generated successfully.",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween

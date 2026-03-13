@@ -291,10 +291,10 @@ object PIIValidator {
         return results.map { r ->
             PIIValidationResult(
                 entityType = "CREDIT_CARD",
-                value = r.formattedNumber,
-                maskedValue = r.maskedNumber,
+                value = r.formatted,
+                maskedValue = r.masked,
                 confidence = when {
-                    r.luhnValid && r.networkDetected != null -> PIIConfidence.HIGH
+                    r.luhnValid && r.network != null -> PIIConfidence.HIGH
                     r.luhnValid -> PIIConfidence.MEDIUM
                     else -> PIIConfidence.LOW
                 },
@@ -314,8 +314,8 @@ object PIIValidator {
         return results.map { r ->
             PIIValidationResult(
                 entityType = "EMAIL",
-                value = r.original,
-                maskedValue = maskEmail(r.original),
+                value = r.normalizedEmail,
+                maskedValue = maskEmail(r.normalizedEmail),
                 confidence = when {
                     r.isValid && !r.isDisposable && !r.isRoleAddress -> PIIConfidence.HIGH
                     r.isValid -> PIIConfidence.MEDIUM
@@ -333,12 +333,14 @@ object PIIValidator {
      * @return List of [PIIValidationResult] for each phone number found
      */
     fun validatePhone(text: String): List<PIIValidationResult> {
-        val results = CountryCodeValidator.extractFromText(text)
-        return results.map { r ->
+        val phoneRegex = Regex("""(?:\+\d{1,3}[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}""")
+        return phoneRegex.findAll(text).map { matchResult ->
+            val raw = matchResult.value
+            val r = CountryCodeValidator.validate(raw)
             PIIValidationResult(
                 entityType = "PHONE",
-                value = r.originalInput,
-                maskedValue = maskPhone(r.normalizedNumber ?: r.originalInput),
+                value = raw,
+                maskedValue = maskPhone(r.formattedNumber ?: raw),
                 confidence = when {
                     r.isValid && r.confidence >= 0.85f -> PIIConfidence.HIGH
                     r.isValid -> PIIConfidence.MEDIUM
@@ -346,7 +348,7 @@ object PIIValidator {
                 },
                 validationDetails = r.reason
             )
-        }
+        }.toList()
     }
 
     /**
@@ -356,8 +358,8 @@ object PIIValidator {
      * @return List of [PIIValidationResult] for each API key found
      */
     fun validateAPIKey(text: String): List<PIIValidationResult> {
-        val matches = APIKeyPatterns.scan(text)
-        return matches.map { m ->
+        val scanResult = APIKeyPatterns.scan(text)
+        return scanResult.matches.map { m ->
             val masked = if (m.value.length > 8)
                 m.value.take(4) + "*".repeat(m.value.length - 8) + m.value.takeLast(4)
             else
@@ -367,10 +369,10 @@ object PIIValidator {
                 value = m.value,
                 maskedValue = masked,
                 confidence = when (m.pattern.severity) {
-                    APIKeyPatterns.Severity.CRITICAL -> PIIConfidence.HIGH
-                    APIKeyPatterns.Severity.HIGH -> PIIConfidence.HIGH
-                    APIKeyPatterns.Severity.MEDIUM -> PIIConfidence.MEDIUM
-                    APIKeyPatterns.Severity.LOW -> PIIConfidence.LOW
+                    APIKeyPatterns.KeySeverity.CRITICAL -> PIIConfidence.HIGH
+                    APIKeyPatterns.KeySeverity.HIGH -> PIIConfidence.HIGH
+                    APIKeyPatterns.KeySeverity.MEDIUM -> PIIConfidence.MEDIUM
+                    APIKeyPatterns.KeySeverity.LOW -> PIIConfidence.LOW
                 },
                 validationDetails = "Provider: ${m.pattern.provider}, Severity: ${m.pattern.severity}"
             )

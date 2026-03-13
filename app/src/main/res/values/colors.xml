@@ -29,6 +29,9 @@
     <color name="protection_active">#FF10B981</color>
     <color name="protection_inactive">#FF94A3B8</color>
 
+    <!-- Launcher icon background -->
+    <color name="ic_launcher_background">#FF1A56DB</color>
+
     <!-- Legacy required colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

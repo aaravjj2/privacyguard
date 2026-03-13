@@ -619,7 +619,7 @@ fun PieChart(
                             val dx = offset.x - center.x
                             val dy = offset.y - center.y
                             val distance = sqrt(dx * dx + dy * dy)
-                            val outerRadius = this.size.minDimension / 2f
+                            val outerRadius = minOf(this.size.width, this.size.height) / 2f
                             val innerRadius = outerRadius - strokeWidth.toPx()
 
                             if (distance in innerRadius..outerRadius) {
